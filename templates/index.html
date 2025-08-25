@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Verification Portal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles1.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 Certificate Verification Portal</h1>
+        
+        <div class="info">
+            Enter your registered email address and select the event to verify and download your certificate.
+        </div>
+        
+        <form method="post" id="verifyForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            
+            <div class="form-group">
+                <label for="email">📧 Email Address:</label>
+                <input type="email" 
+                       id="email" 
+                       name="email" 
+                       required 
+                       placeholder="Enter your registered email address"
+                       value="{{ request.form.get('email', '') }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="event">🎯 Select Event:</label>
+                <select id="event" name="event" required>
+                    <option value="">-- Choose an event --</option>
+                    {% for event in events %}
+                        <option value="{{ event }}" 
+                                {% if request.form.get('event') == event %}selected{% endif %}>
+                            {{ event }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <button type="submit" class="btn" id="submitBtn">
+                🔍 Verify & Get Certificate
+            </button>
+        </form>
+        
+        {% if error %}
+            <div class="error">❌ {{ error }}</div>
+        {% endif %}
+        
+        {% if cert_link %}
+            <a href="{{ cert_link }}" class="success" target="_blank" rel="noopener">
+                📥 Download Your Certificate
+            </a>
+        {% endif %}
+        
+        <div class="footer">
+            Secure certificate verification system<br>
+            © 2025 Certificate Management Portal
+        </div>
+    </div>
+
+    <script>
+        // Add loading state to button
+        document.getElementById('verifyForm').addEventListener('submit', function() {
+            const btn = document.getElementById('submitBtn');
+            btn.innerHTML = '🔄 Verifying...';
+            btn.disabled = true;
+        });
+        
+        // Auto-focus on email field
+        document.getElementById('email').focus();
+    </script>
+</body>
+</html>
