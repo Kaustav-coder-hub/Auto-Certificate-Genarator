@@ -1,5 +1,5 @@
 # Complete Flask Certificate Verification Application
-from flask import Flask, render_template, request, render_template_string
+from flask import Flask, render_template, request, render_template_string, redirect, url_for, session, flash
 from flask_talisman import Talisman
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
@@ -10,6 +10,9 @@ from functools import wraps
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
+import firebase_admin
+from firebase_admin import credentials, auth as firebase_auth
+from flask import request, session, jsonify
 
 # Load environment variables
 load_dotenv()
@@ -17,6 +20,25 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-this')
+
+# Path to admin user data file
+ADMIN_USERS_FILE = 'admin_users.json'
+
+import json
+import hashlib
+
+def load_admin_users():
+    if not os.path.exists(ADMIN_USERS_FILE):
+        return {}
+    with open(ADMIN_USERS_FILE, 'r') as f:
+        return json.load(f)
+
+def save_admin_users(users):
+    with open(ADMIN_USERS_FILE, 'w') as f:
+        json.dump(users, f)
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
 # Security configurations
 Talisman(app, force_https=False)  # Set to True in production
@@ -192,6 +214,68 @@ def bulk_generate():
     <a href="/">← Back to Verification Portal</a>
     """)
 
+@app.route('/admin')
+def admin_dashboard():
+    return render_template('admin.html')
+
+# Admin login route
+@app.route('/admin/login', methods=['POST'])
+def admin_login():
+    email = request.form.get('email', '').strip().lower()
+    password = request.form.get('password', '')
+    users = load_admin_users()
+    hashed = hash_password(password)
+    if email in users and users[email]['password'] == hashed:
+        session['admin_authenticated'] = True
+        session['admin_email'] = email
+        flash('Login successful!', 'success')
+        return redirect(url_for('admin_dashboard'))
+    else:
+        flash('Invalid email or password.', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+# Admin signup route
+@app.route('/admin/signup', methods=['POST'])
+def admin_signup():
+    email = request.form.get('email', '').strip().lower()
+    password = request.form.get('password', '')
+    users = load_admin_users()
+    if email in users:
+        flash('Email already registered.', 'error')
+        return redirect(url_for('admin_dashboard'))
+    users[email] = {
+        'password': hash_password(password)
+    }
+    save_admin_users(users)
+    session['admin_authenticated'] = True
+    session['admin_email'] = email
+    flash('Signup successful! You are now logged in.', 'success')
+    return redirect(url_for('admin_dashboard'))
+
+# Admin logout route
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_authenticated', None)
+    session.pop('admin_email', None)
+    flash('Logged out successfully.', 'success')
+    return redirect(url_for('admin_dashboard'))
+
+# Firebase admin login route
+cred = credentials.Certificate('static/serviceAccountKey.json')
+firebase_admin.initialize_app(cred)
+
+@app.route('/admin/firebase-login', methods=['POST'])
+def admin_firebase_login():
+    data = request.get_json()
+    id_token = data.get('idToken')
+    try:
+        decoded_token = firebase_auth.verify_id_token(id_token)
+        session['admin_authenticated'] = True
+        session['admin_email'] = decoded_token.get('email')
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 401
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template_string('''
@@ -243,4 +327,3 @@ if __name__ == '__main__':
         port=int(os.getenv('PORT', 5000))
     )
 
-# /home/kaustav/Documents/Auto-Certificate-Genarator/certificate-app.py

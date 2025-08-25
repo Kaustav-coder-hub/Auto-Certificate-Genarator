@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Certificate Verification</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Font Awesome CDN for Google icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { font-family: Arial, sans-serif; background: #f8f9fa; }
+        .container { max-width: 450px; margin: 40px auto; background: #fff; padding: 35px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);}
+        h1 { color: #007bff; text-align: center; margin-bottom: 22px; }
+        label { font-weight: 600; margin-bottom: 6px; display: block; }
+        input, select { width: 100%; padding: 12px; margin-bottom: 22px; border: 1px solid #bbb; border-radius: 8px; font-size: 17px; }
+        button { background: #007bff; color: white; font-weight: bold; padding: 14px; width: 100%; border-radius: 8px; border: none; font-size: 17px; cursor: pointer; margin-bottom: 3px; }
+        button:hover { background: #0056b3; }
+        .error { color: #e74c3c; text-align: center; margin-top: 10px; }
+        .success { background: #2ecc71; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; text-decoration: none; display: block; }
+        .success:hover { background: #1eaf57; }
+    </style>
+</head>
+<body>
+    <!--<div class="admin-container">
+        <h1>Certificate Verification Portal</h1>
+        <form method="post">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" required placeholder="Enter your registered email" value="{{ request.form.get('email', '') }}">
+            <label for="event">Select Event</label>
+            <select id="event" name="event" required>
+                <option value="">-- Choose an event --</option>
+                {% for event in events %}
+                    <option value="{{ event }}" {% if request.form.get('event') == event %}selected{% endif %}>{{ event }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Verify Certificate</button>
+        </form>
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        {% if cert_link %}
+            <a href="{{ cert_link }}" class="success" target="_blank">Download Your Certificate</a>
+        {% endif %}
+    </div>-->
+    {% if not session.get('admin_authenticated') %}
+    <div class="split-auth-bg">
+        <div class="split-auth-left">
+            <div class="logo">Logo</div>
+            <div class="auth-icons">
+                <span class="icon">✍️</span>
+                <span class="icon">📄</span>
+                <span class="icon">😍</span>
+            </div>
+            <h2 class="auth-title">Voluptate labore incididunt dolor irure</h2>
+            <p class="auth-desc">Mollit cupidatat consequat ipsum et quis aute sit ipsum culpa exceptur sunt proident eu irure do aute nulla aute. Commodo ut est consequat reprehenderit.</p>
+        </div>
+        <div class="split-auth-right">
+            <div class="auth-card">
+                <h2 class="auth-card-title">Create an account</h2>
+                <p class="auth-card-desc">Start your 30 day free trial</p>
+                <div class="auth-social">
+                    <button class="social-btn" title="Google" onclick="firebaseSignIn('google')">
+                        <img src="/static/googleicon.png" alt="Google" style="width:24px;height:24px;vertical-align:middle;">
+                    </button>
+                     <button class="social-btn" title="Github" onclick="firebaseSignIn('github')">
+                        <img src="/static/githubicon.png" alt="Github" style="width:24px;height:24px;vertical-align:middle;background:#fff;border-radius:50%;">
+                    </button>
+                    <button class="social-btn" title="Phone" onclick="firebaseSignIn('phone')">
+                        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@15.12.0/icons/apple.svg" alt="Phone" style="width:24px;height:24px;vertical-align:middle;">
+                    </button>
+                   
+                    
+                </div>
+                <form method="post" action="/admin/signup" class="signup-form">
+                    <label for="signup-name">Full name</label>
+                    <input type="text" id="signup-name" name="name" placeholder="John Doe" required>
+                    <label for="signup-email">Email</label>
+                    <input type="email" id="signup-email" name="email" placeholder="example.email@gmail.com" required>
+                    <label for="signup-password">Password</label>
+                    <input type="password" id="signup-password" name="password" placeholder="Enter at least 8+ characters" required>
+                    <button type="button" class="signup-btn" onclick="handleEmailSignup()">Sign up</button>
+                </form>
+                <div class="auth-switch">Been here before? <a href="#" onclick="showLogin(event)">Log in</a></div>
+                <form method="post" action="/admin/login" class="login-form" style="display:none;">
+                    <label for="admin-email">Email</label>
+                    <input type="email" id="admin-email" name="email" placeholder="Enter your admin email" required>
+                    <label for="admin-password">Password</label>
+                    <input type="password" id="admin-password" name="password" placeholder="Enter your password" required>
+                    <button type="button" class="login-btn" onclick="handleEmailLogin()">Login</button>
+                    <div class="auth-switch">New here? <a href="#" onclick="showSignup(event)">Sign up</a></div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>
+    function showLogin(e) {
+        e.preventDefault();
+        document.querySelector('.signup-form').style.display = 'none';
+        document.querySelector('.login-form').style.display = 'block';
+    }
+    function showSignup(e) {
+        e.preventDefault();
+        document.querySelector('.login-form').style.display = 'none';
+        document.querySelector('.signup-form').style.display = 'block';
+    }
+    </script>
+    <style>
+    .split-auth-bg {
+        display: flex;
+        min-height: 100vh;
+        background: #8d8cf7;
+    }
+    .split-auth-left {
+        flex: 1.2;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: #fff;
+        background: #8d8cf7;
+        padding: 40px 0;
+    }
+    .logo {
+        font-size: 2em;
+        font-weight: bold;
+        margin-bottom: 40px;
+    }
+    .auth-icons {
+        display: flex;
+        gap: 32px;
+        font-size: 2.5em;
+        margin-bottom: 32px;
+    }
+    .auth-title {
+        font-size: 2em;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 18px;
+    }
+    .auth-desc {
+        font-size: 1.1em;
+        text-align: center;
+        max-width: 480px;
+        margin-bottom: 18px;
+    }
+    .split-auth-right {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+    }
+    .auth-card {
+        background: #fff;
+        border-radius: 18px;
+        box-shadow: 0 4px 32px rgba(0,0,0,0.08);
+        padding: 38px 32px 32px 32px;
+        min-width: 340px;
+        max-width: 370px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .auth-card-title {
+        font-size: 1.3em;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 6px;
+    }
+    .auth-card-desc {
+        font-size: 0.95em;
+        color: #888;
+        text-align: center;
+        margin-bottom: 18px;
+    }
+    .auth-social {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 18px;
+    width: 100%;
+    min-height: 48px;
+    position: relative;
+    }
+    .social-btn {
+    background: #f3f3f3;
+    border: none;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    }
+    .social-btn:hover {
+    background: #e0e0e0;
+    .social-btn img {
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
+        display: block;
+        margin: auto;
+    }
+    }
+    .signup-form, .login-form {
+        display: block;
+        margin-bottom: 0;
+    }
+    .signup-form label, .login-form label {
+        font-weight: 500;
+        margin-bottom: 4px;
+        margin-top: 12px;
+    }
+    .signup-form input, .login-form input {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #bbb;
+        border-radius: 6px;
+        font-size: 1em;
+    }
+    .signup-btn, .login-btn {
+        background: #8d8cf7;
+        color: white;
+        font-weight: bold;
+        padding: 12px 0;
+        border-radius: 6px;
+        border: none;
+        font-size: 1em;
+        cursor: pointer;
+        margin-bottom: 8px;
+        transition: background 0.2s;
+    }
+    .signup-btn:hover, .login-btn:hover {
+        background: #6c6be6;
+    }
+    .auth-switch {
+        text-align: center;
+        margin-top: 8px;
+        font-size: 0.98em;
+    }
+    .auth-switch a {
+        color: #8d8cf7;
+        text-decoration: underline;
+        cursor: pointer;
+    }
+    @media (max-width: 900px) {
+        .split-auth-bg {
+            flex-direction: column;
+        }
+        .split-auth-left, .split-auth-right {
+            flex: unset;
+            min-height: 320px;
+        }
+        .auth-card {
+            margin: 32px auto;
+        }
+    }
+    </style>
+    {% else %}
+            <h1>Admin Certificate Management Portal</h1>
+            <!-- Authentication & Dashboard -->
+            <section class="section">
+                <h2>1. Admin Authentication & Dashboard</h2>
+                <div class="dashboard">
+                    <div class="stat">
+                        <span class="stat-title">Total Certificates</span>
+                        <span class="stat-value" id="total-certificates">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-title">Active Events</span>
+                        <span class="stat-value" id="active-events">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-title">Participant Count</span>
+                        <span class="stat-value" id="participant-count">0</span>
+                    </div>
+                </div>
+            </section>
+            <!-- Event Management -->
+            <section class="section">
+                <h2>2. Event Management</h2>
+                <form id="event-form">
+                    <label>Event Name: <input type="text" name="event_name" required></label>
+                    <label>Upload Template: <input type="file" name="template_file" accept=".png,.pdf"></label>
+                    <label>Font: <select name="font">
+                        <option value="Calligraphy Brilliant">Calligraphy Brilliant</option>
+                        <option value="Rockybilly">Rockybilly</option>
+                    </select></label>
+                    <label>Font Size: <input type="number" name="font_size" min="10" max="100" value="32"></label>
+                    <label>Font Color: <input type="color" name="font_color" value="#000000"></label>
+                    <button type="button" id="preview-btn">Preview</button>
+                    <div id="template-preview">Template preview will appear here.</div>
+                </form>
+            </section>
+            <!-- Participant Data Management -->
+            <section class="section">
+                <h2>3. Participant Data Management</h2>
+                <form id="participant-upload-form" enctype="multipart/form-data">
+                    <label>Upload Excel/CSV: <input type="file" name="participant_file" accept=".csv,.xlsx"></label>
+                    <button type="button" id="upload-participants-btn">Upload</button>
+                    <div id="upload-progress">Progress: 0%</div>
+                </form>
+                <div id="participant-list">Participant list will appear here.</div>
+                <button type="button" id="add-participant-btn">Add Participant</button>
+            </section>
+            <!-- Certificate Generation & Distribution -->
+            <section class="section">
+                <h2>4. Certificate Generation & Distribution</h2>
+                <form id="generate-certificates-form">
+                    <label>Email Template: <textarea name="email_template" rows="4" cols="50">Dear {{name}},\nYour certificate for {{event}} is attached.</textarea></label>
+                    <label>SMTP Email: <input type="email" name="smtp_email"></label>
+                    <label>SMTP Password: <input type="password" name="smtp_password"></label>
+                    <button type="button" id="generate-btn">Generate Certificates</button>
+                    <div id="generation-progress">Progress: 0%</div>
+                </form>
+                <button type="button" id="download-zip-btn">Download All Certificates (ZIP)</button>
+            </section>
+            <!-- Analytics & Tracking -->
+            <section class="section">
+                <h2>5. Analytics & Tracking</h2>
+                <div id="analytics">
+                    <div>Email Delivery Status: <span id="email-status">N/A</span></div>
+                    <div>Certificate Download Statistics: <span id="download-stats">N/A</span></div>
+                    <div>Participant Engagement: <span id="engagement-metrics">N/A</span></div>
+                    <button type="button" id="export-report-btn">Export Report (PDF/Excel)</button>
+                </div>
+            </section>
+            <a class="back-link" href="/">← Back to Verification Portal</a>
+        {% endif %}
+    </div>
+    <!-- Firebase JS SDK -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDoqtK-CAMYjDy8jb4ASlqCad_ehqRzKkw",
+        authDomain: "certificate-management-6710c.firebaseapp.com",
+        projectId: "certificate-management-6710c",
+        storageBucket: "certificate-management-6710c.firebasestorage.app",
+        messagingSenderId: "5631280297",
+        appId: "1:5631280297:web:346ddd973de20dc6f995b8",
+        measurementId: "G-47JG3SN0GN"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // Firebase Email/Password signup
+    window.handleEmailSignup = function() {
+        const email = document.getElementById('signup-email').value;
+        const password = document.getElementById('signup-password').value;
+        createUserWithEmailAndPassword(auth, email, password)
+            .then(userCredential => userCredential.user.getIdToken())
+            .then(idToken => sendTokenToBackend(idToken))
+            .catch(err => alert(err.message));
+    }
+
+    // Firebase Email/Password login
+    window.handleEmailLogin = function() {
+        const email = document.getElementById('admin-email').value;
+        const password = document.getElementById('admin-password').value;
+        signInWithEmailAndPassword(auth, email, password)
+            .then(userCredential => userCredential.user.getIdToken())
+            .then(idToken => sendTokenToBackend(idToken))
+            .catch(err => alert(err.message));
+    }
+
+    window.firebaseSignIn = function(providerName) {
+        let provider;
+        if (providerName === 'google') {
+            provider = new GoogleAuthProvider();
+        } else if (providerName === 'github') {
+            provider = new GithubAuthProvider();
+        } else {
+            alert('Provider not implemented');
+            return;
+        }
+        signInWithPopup(auth, provider)
+            .then(result => result.user.getIdToken())
+            .then(idToken => sendTokenToBackend(idToken))
+            .catch(err => alert(err.message));
+    }
+
+    function sendTokenToBackend(idToken) {
+        fetch('/admin/firebase-login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({idToken})
+        }).then(res => {
+            if (res.ok) window.location.reload();
+            else alert('Authentication failed');
+        });
+    }
+</script>
+</body>
+</html>
