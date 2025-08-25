@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 DRIVE_FOLDER_ID = os.getenv("DRIVE_FOLDER_ID", "1y-IZ41vP_OdGIGxTg0skWO-YHox8Vyhd")
-SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE", "trackbot-56f02-466007-4bc2606df4b9.json")
+SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE", "static/serviceAccountKey.json")
 EVENTS = os.getenv("EVENTS", "CampusToCode,PythonWorkshop,DataScience101").split(",")
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
