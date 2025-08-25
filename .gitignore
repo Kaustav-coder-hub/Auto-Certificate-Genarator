@@ -1,10 +1,6 @@
 *.env
 *.pyc
 __pycache__/
-static/*.png
-static/*.jpg
-static/*.jpeg
-static/*.svg
 auto-certi-gen-env/
 trackbot-56f02-466007-4bc2606df4b9.json
 os
