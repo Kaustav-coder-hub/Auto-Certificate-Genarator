@@ -184,6 +184,14 @@ def stats():
         "service_status": "running"
     }
 
+@app.route('/bulk-generate')
+def bulk_generate():
+    return render_template_string("""
+    <h2>Bulk Certificate Generation</h2>
+    <p>This feature will allow admins to generate certificates for all participants at once.</p>
+    <a href="/">← Back to Verification Portal</a>
+    """)
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template_string('''
