@@ -2,5 +2,5 @@
 *.pyc
 __pycache__/
 auto-certi-gen-env/
-trackbot-56f02-466007-4bc2606df4b9.json
+static/serviceAccountKey.json
 os
