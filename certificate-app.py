@@ -213,80 +213,40 @@ def bulk_generate():
     <a href="/">← Back to Verification Portal</a>
     """)
 
-@app.route('/admin')
-def admin_dashboard():
-    return render_template('admin.html')
-
-# Admin login route
-@app.route('/admin/login', methods=['POST'])
-def admin_login():
-    email = request.form.get('email', '').strip().lower()
-    password = request.form.get('password', '')
-    users = load_admin_users()
-    hashed = hash_password(password)
-    if email in users and users[email]['password'] == hashed:
-        session['admin_authenticated'] = True
-        session['admin_email'] = email
-        flash('Login successful!', 'success')
-        return redirect(url_for('admin_dashboard'))
-    else:
-        flash('Invalid email or password.', 'error')
-        return redirect(url_for('admin_dashboard'))
-
-# Admin signup route
-@app.route('/admin/signup', methods=['POST'])
-def admin_signup():
-    email = request.form.get('email', '').strip().lower()
-    password = request.form.get('password', '')
-    users = load_admin_users()
-    if email in users:
-        flash('Email already registered.', 'error')
-        return redirect(url_for('admin_dashboard'))
-    users[email] = {
-        'password': hash_password(password)
-    }
-    save_admin_users(users)
-    session['admin_authenticated'] = True
-    session['admin_email'] = email
-    flash('Signup successful! You are now logged in.', 'success')
-    return redirect(url_for('admin_dashboard'))
-
-# Admin logout route
-@app.route('/admin/logout')
-def admin_logout():
-    session.pop('admin_authenticated', None)
-    session.pop('admin_email', None)
-    flash('Logged out successfully.', 'success')
-    return redirect(url_for('admin_dashboard'))
-
+"""
+# Admin login and authentication routes are commented out for now.
+# @app.route('/admin')
+# def admin_dashboard():
+#     return render_template('admin.html')
+#
+# @app.route('/admin/login', methods=['POST'])
+# def admin_login():
+#     ...
+#
+# @app.route('/admin/signup', methods=['POST'])
+# def admin_signup():
+#     ...
+#
+# @app.route('/admin/logout')
+# def admin_logout():
+#     ...
+#
 # Firebase admin login route
-service_account_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-if not service_account_json:
-    logger.error("GOOGLE_SERVICE_ACCOUNT_JSON environment variable not set")
-    raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON environment variable not set")
-try:
-    cred = credentials.Certificate(json.loads(service_account_json))
-except Exception as e:
-    logger.error(f"Failed to load service account credentials from environment: {e}")
-    raise
-firebase_admin.initialize_app(cred)
-
-@app.route('/admin/firebase-login', methods=['POST'])
-def admin_firebase_login():
-    data = request.get_json()
-    id_token = data.get('idToken')
-    try:
-        decoded_token = firebase_auth.verify_id_token(id_token)
-        email = decoded_token.get('email')
-        users = load_admin_users()
-        if email in users:
-            session['admin_authenticated'] = True
-            session['admin_email'] = email
-            return jsonify({'status': 'success'})
-        else:
-            return jsonify({'status': 'error', 'message': 'Email not registered as admin.'}), 401
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 401
+# service_account_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+# if not service_account_json:
+#     logger.error("GOOGLE_SERVICE_ACCOUNT_JSON environment variable not set")
+#     raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON environment variable not set")
+# try:
+#     cred = credentials.Certificate(json.loads(service_account_json))
+# except Exception as e:
+#     logger.error(f"Failed to load service account credentials from environment: {e}")
+#     raise
+# firebase_admin.initialize_app(cred)
+#
+# @app.route('/admin/firebase-login', methods=['POST'])
+# def admin_firebase_login():
+#     ...
+"""
 
 @app.errorhandler(404)
 def page_not_found(e):
