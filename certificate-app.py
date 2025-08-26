@@ -277,9 +277,14 @@ def admin_firebase_login():
     id_token = data.get('idToken')
     try:
         decoded_token = firebase_auth.verify_id_token(id_token)
-        session['admin_authenticated'] = True
-        session['admin_email'] = decoded_token.get('email')
-        return jsonify({'status': 'success'})
+        email = decoded_token.get('email')
+        users = load_admin_users()
+        if email in users:
+            session['admin_authenticated'] = True
+            session['admin_email'] = email
+            return jsonify({'status': 'success'})
+        else:
+            return jsonify({'status': 'error', 'message': 'Email not registered as admin.'}), 401
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 401
 
