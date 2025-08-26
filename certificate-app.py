@@ -13,6 +13,7 @@ from google.oauth2.service_account import Credentials
 import firebase_admin
 from firebase_admin import credentials, auth as firebase_auth
 from flask import request, session, jsonify
+import json
 
 # Load environment variables
 load_dotenv()
@@ -23,9 +24,6 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-this'
 
 # Path to admin user data file
 ADMIN_USERS_FILE = 'admin_users.json'
-
-import json
-import hashlib
 
 def load_admin_users():
     if not os.path.exists(ADMIN_USERS_FILE):
