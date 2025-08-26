@@ -14,6 +14,7 @@ import firebase_admin
 from firebase_admin import credentials, auth as firebase_auth
 from flask import request, session, jsonify
 import json
+import hashlib
 
 # Load environment variables
 load_dotenv()
@@ -118,8 +119,8 @@ def verify():
         
         try:
             # Initialize Google Drive service
-            creds = Credentials.from_service_account_file(
-                SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+            creds = Credentials.from_service_account_info(
+                json.loads(os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')), scopes=SCOPES)
             drive_service = build('drive', 'v3', credentials=creds)
             
             # Generate possible certificate filenames
@@ -184,7 +185,7 @@ def health_check():
     """Health check endpoint for monitoring"""
     try:
         # Test Drive API connection
-        creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+        creds = Credentials.from_service_account_info(json.loads(os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')), scopes=SCOPES)
         drive_service = build('drive', 'v3', credentials=creds)
         
         # Simple API test
@@ -259,7 +260,15 @@ def admin_logout():
     return redirect(url_for('admin_dashboard'))
 
 # Firebase admin login route
-cred = credentials.Certificate('static/serviceAccountKey.json')
+service_account_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+if not service_account_json:
+    logger.error("GOOGLE_SERVICE_ACCOUNT_JSON environment variable not set")
+    raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON environment variable not set")
+try:
+    cred = credentials.Certificate(json.loads(service_account_json))
+except Exception as e:
+    logger.error(f"Failed to load service account credentials from environment: {e}")
+    raise
 firebase_admin.initialize_app(cred)
 
 @app.route('/admin/firebase-login', methods=['POST'])
@@ -305,19 +314,17 @@ def internal_error(error):
         error="Internal server error. Please try again later."), 500
 
 if __name__ == '__main__':
-    # Ensure required files exist
-    if not os.path.exists(SERVICE_ACCOUNT_FILE):
-        logger.error(f"Service account file not found: {SERVICE_ACCOUNT_FILE}")
-        print(f"ERROR: Service account file '{SERVICE_ACCOUNT_FILE}' not found!")
-        print("Please ensure the Google Service Account JSON file is in the same directory.")
+    # Ensure required environment variable exists
+    if not os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON'):
+        logger.error("GOOGLE_SERVICE_ACCOUNT_JSON environment variable not set")
+        print("ERROR: GOOGLE_SERVICE_ACCOUNT_JSON environment variable not set!")
+        print("Please set the service account JSON in your hosting environment.")
         exit(1)
-    
     # Validate environment variables
     if not DRIVE_FOLDER_ID:
         logger.error("DRIVE_FOLDER_ID not configured")
         print("ERROR: DRIVE_FOLDER_ID not configured!")
         exit(1)
-    
     # Run the application
     app.run(
         debug=os.getenv('FLASK_ENV') == 'development',
