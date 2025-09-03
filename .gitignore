@@ -4,3 +4,4 @@ __pycache__/
 auto-certi-gen-env/
 *.json
 os
+certificates/
