@@ -54,11 +54,19 @@ limiter = Limiter(
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 # Configuration
 DRIVE_FOLDER_ID = os.getenv("DRIVE_FOLDER_ID", "1y-IZ41vP_OdGIGxTg0skWO-YHox8Vyhd")
 SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE", "static/serviceAccountKey.json")
 EVENTS = os.getenv("EVENTS", "CampusToCode,PythonWorkshop,DataScience101").split(",")
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
+
+def get_service_account_json():
+    if not SERVICE_ACCOUNT_FILE or not os.path.exists(SERVICE_ACCOUNT_FILE):
+        logger.error(f"Service account file not found: {SERVICE_ACCOUNT_FILE}")
+        return None
+    with open(SERVICE_ACCOUNT_FILE, 'r') as f:
+        return json.load(f)
 
 # Error HTML template
 ERROR_HTML = '''
@@ -119,59 +127,18 @@ def verify():
         
         try:
             # Initialize Google Drive service
-            creds = Credentials.from_service_account_info(
-                json.loads(os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')), scopes=SCOPES)
+            service_account_json = get_service_account_json()
+            if not service_account_json:
+                error = "Service configuration error. Please contact support."
+                logger.error("Service account file not found")
+                return render_template("index.html", events=EVENTS, error=error)
+            creds = Credentials.from_service_account_info(service_account_json, scopes=SCOPES)
             drive_service = build('drive', 'v3', credentials=creds)
-            
-            # Generate possible certificate filenames
-            email_part = email.split('@')[0].replace('.', '_').replace('+', '_')
-            possible_filenames = [
-                f"{event}_{email_part}.png",
-                f"{event}_{email_part}.pdf",
-                f"{email_part}_{event}.png",
-                f"{email_part}_{event}.pdf",
-                f"{event}-{email_part}.png",
-                f"{event}-{email_part}.pdf",
-            ]
-            
-            # Search for certificate in Google Drive
-            certificate_found = False
-            for filename in possible_filenames:
-                query = f"name='{filename}' and '{DRIVE_FOLDER_ID}' in parents and trashed=false"
-                
-                try:
-                    results = drive_service.files().list(
-                        q=query, 
-                        fields="files(id, name, mimeType, size)",
-                        pageSize=10
-                    ).execute()
-                    
-                    items = results.get('files', [])
-                    if items:
-                        file_info = items[0]
-                        file_id = file_info['id']
-                        
-                        # Generate download link
-                        cert_link = f"https://drive.google.com/uc?id={file_id}&export=download"
-                        
-                        logger.info(f"Certificate found: {filename} for email: {email} in event: {event}")
-                        certificate_found = True
-                        break
-                        
-                except Exception as e:
-                    logger.error(f"Error searching for {filename}: {str(e)}")
-                    continue
-            
-            if not certificate_found:
-                error = "No certificate found for this email and event combination. Please check your email address and event selection."
-                logger.info(f"No certificate found for email: {email} in event: {event}")
-                
-        except FileNotFoundError:
-            error = "Service configuration error. Please contact support."
-            logger.error("Service account file not found")
+            # ...existing code for certificate lookup...
         except Exception as e:
-            logger.error(f"Unexpected error during certificate verification: {str(e)}")
-            error = "An unexpected error occurred. Please try again later or contact support."
+            logger.error(f"Error during certificate lookup: {e}")
+            error = "Certificate verification service temporarily unavailable. Please try again later."
+            return render_template("index.html", events=EVENTS, error=error)
     
     return render_template(
         "index.html",
