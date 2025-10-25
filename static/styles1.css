@@ -147,3 +147,160 @@ input:focus, select:focus {
             font-size: 1.5em;
         }
     }
+/* --- Extracted admin.html inline styles appended below --- */
+.split-auth-bg {
+    display: flex;
+    min-height: 100vh;
+    background: #8d8cf7;
+}
+.split-auth-left {
+    flex: 1.2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    background: #8d8cf7;
+    padding: 40px 0;
+}
+.logo {
+    font-size: 2em;
+    font-weight: bold;
+    margin-bottom: 40px;
+}
+.auth-icons {
+    display: flex;
+    gap: 32px;
+    font-size: 2.5em;
+    margin-bottom: 32px;
+}
+.auth-title {
+    font-size: 2em;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 18px;
+}
+.auth-desc {
+    font-size: 1.1em;
+    text-align: center;
+    max-width: 480px;
+    margin-bottom: 18px;
+}
+.split-auth-right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+}
+.auth-card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.08);
+    padding: 38px 32px 32px 32px;
+    min-width: 340px;
+    max-width: 370px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+.auth-card-title {
+    font-size: 1.3em;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 6px;
+}
+.auth-card-desc {
+    font-size: 0.95em;
+    color: #888;
+    text-align: center;
+    margin-bottom: 18px;
+}
+.auth-social {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 18px;
+    width: 100%;
+    min-height: 48px;
+    position: relative;
+}
+.social-btn {
+    background: #f3f3f3;
+    border: none;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.social-btn:hover {
+    background: #e0e0e0;
+}
+.social-btn img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    display: block;
+    margin: auto;
+}
+.signup-form, .login-form {
+    display: block;
+    margin-bottom: 0;
+}
+.signup-form label, .login-form label {
+    font-weight: 500;
+    margin-bottom: 4px;
+    margin-top: 12px;
+}
+.signup-form input, .login-form input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #bbb;
+    border-radius: 6px;
+    font-size: 1em;
+}
+.signup-btn, .login-btn {
+    background: #8d8cf7;
+    color: white;
+    font-weight: bold;
+    padding: 12px 0;
+    border-radius: 6px;
+    border: none;
+    font-size: 1em;
+    cursor: pointer;
+    margin-bottom: 8px;
+    transition: background 0.2s;
+}
+.signup-btn:hover, .login-btn:hover {
+    background: #6c6be6;
+}
+.auth-switch {
+    text-align: center;
+    margin-top: 8px;
+    font-size: 0.98em;
+}
+.auth-switch a {
+    color: #8d8cf7;
+    text-decoration: underline;
+    cursor: pointer;
+}
+@media (max-width: 900px) {
+    .split-auth-bg {
+        flex-direction: column;
+    }
+    .split-auth-left, .split-auth-right {
+        flex: unset;
+        min-height: 320px;
+    }
+    .auth-card {
+        margin: 32px auto;
+    }
+}
