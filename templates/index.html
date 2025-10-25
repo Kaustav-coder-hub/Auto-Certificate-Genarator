@@ -63,368 +63,48 @@
                 </main>
             </div>
         </div>
+        
+        <form method="post" id="verifyForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
-        <!-- Admin Dashboard -->
-        <div id="admin-dashboard" class="page admin-layout">
-            <aside class="sidebar">
-                <div class="sidebar-header">
-                    <h3>CertiPortal</h3>
-                </div>
-                
-                <nav class="sidebar-nav" id="sidebar-nav">
-                    <a href="#" data-page="dashboard" class="nav-item active">
-                        <span>📊</span> Dashboard
-                    </a>
-                    <a href="#" data-page="events" class="nav-item" data-permission="events">
-                        <span>🎯</span> Event Management
-                    </a>
-                    <a href="#" data-page="participants" class="nav-item" data-permission="participants">
-                        <span>👥</span> Participants
-                    </a>
-                    <a href="#" data-page="generation" class="nav-item" data-permission="generation">
-                        <span>🏆</span> Certificate Generation
-                    </a>
-                    <a href="#" data-page="analytics" class="nav-item" data-permission="analytics">
-                        <span>📈</span> Analytics
-                    </a>
-                    <a href="#" data-page="system" class="nav-item" data-permission="system">
-                        <span>⚙️</span> System Monitor
-                    </a>
-                    <a href="#" data-page="settings" class="nav-item" data-permission="settings">
-                        <span>🛠️</span> Settings
-                    </a>
-                </nav>
-                
-                <div class="sidebar-footer">
-                    <div class="user-info">
-                        <div class="user-avatar" id="user-avatar"></div>
-                        <div class="user-details">
-                            <span id="user-name">Admin User</span>
-                            <small id="user-email">admin@certiportal.com</small>
-                            <span id="user-role" class="user-role">Super Admin</span>
-                        </div>
-                    </div>
-                    <button id="logout-btn" class="btn btn--outline btn--sm">Logout</button>
-                </div>
-            </aside>
-
-            <main class="main-content">
-                <header class="main-header">
-                    <div class="breadcrumbs">
-                        <span id="current-page-title">Dashboard</span>
-                    </div>
-                    <div class="welcome-message" id="welcome-message">
-                        Welcome back, Admin! You have full system access.
-                    </div>
-                </header>
-
-                <!-- Dashboard Content -->
-                <div id="dashboard-content" class="content-area active">
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-header">
-                                <h3>Total Events</h3>
-                                <span class="stat-icon">🎯</span>
-                            </div>
-                            <div class="stat-value" id="total-events">0</div>
-                            <div class="stat-change positive">+12% this month</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-header">
-                                <!DOCTYPE html>
-                                <html lang="en">
-                                <head>
-                                    <meta charset="UTF-8">
-                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                    <title>CertiPortal - Certificate Management System</title>
-                                    <link rel="stylesheet" href="/static/style.css">
-                                    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-                                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-                                </head>
-                                <body>
-                                    <!-- Loading Overlay -->
-                                    <div id="loading" class="loading-overlay">
-                                        <div class="loading-spinner"></div>
-                                        <p>Loading...</p>
-                                    </div>
-                                    <div id="app" class="app">
-                                        <!-- SPA content will be loaded here by app.js -->
-                                    </div>
-                                    <script src="/static/app.js"></script>
-                                </body>
-                                </html>
-                    
-                    <div class="participants-filters">
-                        <select id="event-filter" class="form-control">
-                            <option value="">All Events</option>
-                        </select>
-                        <input type="search" id="participant-search" class="form-control" placeholder="Search participants...">
-                    </div>
-                    
-                    <div id="participants-list" class="participants-table"></div>
-                </div>
-
-                <!-- Certificate Generation Content -->
-                <div id="generation-content" class="content-area">
-                    <div class="content-header">
-                        <h2>Certificate Generation</h2>
-                    </div>
-                    
-                    <div class="generation-controls">
-                        <select id="generation-event-select" class="form-control">
-                            <option value="">Select Event</option>
-                        </select>
-                        <button id="generate-certificates-btn" class="btn btn--primary">Generate Certificates</button>
-                    </div>
-                    
-                    <div id="generation-progress" class="progress-section hidden">
-                        <h3>Generation Progress</h3>
-                        <div class="progress-bar">
-                            <div id="progress-fill" class="progress-fill"></div>
-                        </div>
-                        <div id="progress-text" class="progress-text">0%</div>
-                    </div>
-                </div>
-
-                <!-- Analytics Content -->
-                <div id="analytics-content" class="content-area">
-                    <div class="content-header">
-                        <h2>Analytics Dashboard</h2>
-                        <button id="export-report-btn" class="btn btn--secondary">Export Report</button>
-                    </div>
-                    
-                    <div class="analytics-overview">
-                        <div class="analytics-card">
-                            <h3>Email Statistics</h3>
-                            <div class="chart-container" style="position: relative; height: 300px;">
-                                <canvas id="email-stats-chart"></canvas>
-                            </div>
-                        </div>
-                        
-                        <div class="analytics-card">
-                            <h3>Download Metrics</h3>
-                            <div class="metric-list">
-                                <div class="metric-item">
-                                    <span>Total Downloads</span>
-                                    <span id="total-downloads">0</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span>Download Rate</span>
-                                    <span id="download-rate">0%</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span>Pending Downloads</span>
-                                    <span id="pending-downloads">0</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- System Monitor Content -->
-                <div id="system-content" class="content-area">
-                    <div class="content-header">
-                        <h2>System Monitor</h2>
-                        <button id="refresh-system-btn" class="btn btn--secondary">Refresh</button>
-                    </div>
-                    
-                    <div class="system-overview">
-                        <div class="system-card">
-                            <h3>System Health</h3>
-                            <div class="system-metrics">
-                                <div class="metric-item">
-                                    <span>System Uptime</span>
-                                    <span class="status status--success">99.9%</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span>Processing Queue</span>
-                                    <span id="queue-status">Empty</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span>Storage Usage</span>
-                                    <span>67% (2.1GB / 3.2GB)</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="system-card">
-                            <h3>Generation Performance</h3>
-                            <div class="metric-list">
-                                <div class="metric-item">
-                                    <span>Avg. Generation Time</span>
-                                    <span>2.3 seconds</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span>Success Rate</span>
-                                    <span>99.7%</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span>Active Workers</span>
-                                    <span>4 / 8</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Settings Content -->
-                <div id="settings-content" class="content-area">
-                    <div class="content-header">
-                        <h2>System Settings</h2>
-                    </div>
-                    
-                    <div class="settings-sections">
-                        <div class="settings-card">
-                            <h3>Email Configuration</h3>
-                            <form class="settings-form">
-                                <div class="form-group">
-                                    <label class="form-label">SMTP Server</label>
-                                    <input type="text" class="form-control" value="smtp.certiportal.com">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">From Email</label>
-                                    <input type="email" class="form-control" value="noreply@certiportal.com">
-                                </div>
-                                <button type="submit" class="btn btn--primary">Save Changes</button>
-                            </form>
-                        </div>
-                        
-                        <div class="settings-card">
-                            <h3>Security Settings</h3>
-                            <div class="settings-options">
-                                <div class="setting-option">
-                                    <span>Two-Factor Authentication</span>
-                                    <input type="checkbox" checked>
-                                </div>
-                                <div class="setting-option">
-                                    <span>Login Notifications</span>
-                                    <input type="checkbox">
-                                </div>
-                                <div class="setting-option">
-                                    <span>Auto-logout (minutes)</span>
-                                    <input type="number" value="30" class="form-control" style="width: 80px;">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </div>
-    </div>
-
-    <!-- Login Modal -->
-    <div id="login-modal" class="login-modal hidden">
-        <div class="login-modal-overlay"></div>
-        <div class="login-modal-content">
-            <div class="login-modal-header">
-                <h2>Welcome to CertiPortal</h2>
-                <button id="close-login-modal" class="login-modal-close">&times;</button>
+            <div class="form-group">
+                <label for="email">📧 Email Address:</label>
+                <input type="email" 
+                       id="email" 
+                       name="email" 
+                       required 
+                       placeholder="Enter your registered email address"
+                       value="{{ request.form.get('email', '') }}">
             </div>
-            
-            <div class="login-modal-body">
-                <div class="login-tabs">
-                    <button class="login-tab active" data-tab="login">Login</button>
-                    <button class="login-tab" data-tab="signup">Sign Up</button>
-                    <button class="login-tab" data-tab="magic">Magic Link</button>
-                </div>
-                
-                <div class="login-tab-content">
-                    <!-- Login Tab -->
-                    <div id="login-tab-content" class="tab-content active">
-                        <form id="login-form" class="login-form">
-                            <div class="form-group">
-                                <label for="login-email" class="form-label">Email Address</label>
-                                <input type="email" id="login-email" class="form-control dark" placeholder="Enter your email" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="login-password" class="form-label">Password</label>
-                                <input type="password" id="login-password" class="form-control dark" placeholder="Enter your password" required>
-                            </div>
-                            <button type="submit" class="btn btn--primary btn--full-width login-btn">Login</button>
-                        </form>
-                        
-                        <div class="oauth-section">
-                            <div class="oauth-divider">
-                                <span>or continue with</span>
-                            </div>
-                            <div class="oauth-buttons">
-                                <button id="google-login-btn" class="btn btn--outline oauth-btn">
-                                    <span>🔍</span>
-                                    Google
-                                </button>
-                                <button id="github-login-btn" class="btn btn--outline oauth-btn">
-                                    <span>🐱</span>
-                                    GitHub
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Sign Up Tab -->
-                    <div id="signup-tab-content" class="tab-content">
-                        <form id="signup-form" class="login-form">
-                            <div class="form-group">
-                                <label for="signup-name" class="form-label">Full Name</label>
-                                <input type="text" id="signup-name" class="form-control dark" placeholder="Enter your full name" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="signup-email" class="form-label">Email Address</label>
-                                <input type="email" id="signup-email" class="form-control dark" placeholder="Enter your email" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="signup-password" class="form-label">Password</label>
-                                <input type="password" id="signup-password" class="form-control dark" placeholder="Create a password" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="signup-confirm" class="form-label">Confirm Password</label>
-                                <input type="password" id="signup-confirm" class="form-control dark" placeholder="Confirm your password" required>
-                            </div>
-                            <button type="submit" class="btn btn--primary btn--full-width login-btn">Sign Up</button>
-                        </form>
-                    </div>
-                    
-                    <!-- Magic Link Tab -->
-                    <div id="magic-tab-content" class="tab-content">
-                        <form id="magic-form" class="login-form">
-                            <div class="magic-info">
-                                <p>Enter your email address and we'll send you a secure magic link to sign in instantly.</p>
-                            </div>
-                            <div class="form-group">
-                                <label for="magic-email" class="form-label">Email Address</label>
-                                <input type="email" id="magic-email" class="form-control dark" placeholder="Enter your email" required>
-                            </div>
-                            <button type="submit" class="btn btn--primary btn--full-width login-btn">Send Magic Link</button>
-                        </form>
-                    </div>
-                </div>
-                
-                <div class="demo-credentials">
-                    <div class="demo-accounts">
-                        <h4>Demo Accounts:</h4>
-                        <div class="account-grid">
-                            <div class="demo-account">
-                                <strong>Super Admin:</strong><br>
-                                <span>demo@example.com / demo123</span>
-                            </div>
-                            <div class="demo-account">
-                                <strong>Event Manager:</strong><br>
-                                <span>eventmanager@certiportal.com / event123</span>
-                            </div>
-                            <div class="demo-account">
-                                <strong>Marketing Manager:</strong><br>
-                                <span>marketing@certiportal.com / market123</span>
-                            </div>
-                            <div class="demo-account">
-                                <strong>Operations Manager:</strong><br>
-                                <span>ops@certiportal.com / ops123</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
+            <div class="form-group">
+                <label for="event">🎯 Select Event:</label>
+                <select id="event" name="event" required>
+                    <option value="">-- Choose an event --</option>
+                    {% for event in events %}
+                        <option value="{{ event }}" 
+                                {% if request.form.get('event') == event %}selected{% endif %}>
+                            {{ event }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
+
+            <button type="submit" class="btn" id="submitBtn">
+                🔍 Verify & Get Certificate
+            </button>
+        </form>
+        
+        <div id="resultArea">
+            {% if error %}
+                <div class="error">❌ {{ error }}</div>
+            {% endif %}
+            {% if cert_link %}
+                <a href="{{ cert_link }}" class="success" target="_blank" rel="noopener">
+                    📥 Download Your Certificate
+                </a>
+            {% endif %}
         </div>
-    </div>
 
     <!-- Other Modals -->
     <div id="create-event-modal" class="modal hidden">
@@ -477,9 +157,44 @@
         </div>
     </div>
 
-    <!-- Success/Error Messages -->
-    <div id="toast-container" class="toast-container"></div>
+    <script>
+        // Add loading state and AJAX verify
+        document.getElementById('verifyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.innerHTML = '🔄 Verifying...';
+            btn.disabled = true;
 
-    <script src="app.js"></script>
+            const email = document.getElementById('email').value;
+            const event = document.getElementById('event').value;
+
+            fetch('/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, event })
+            }).then(async res => {
+                btn.innerHTML = '🔍 Verify & Get Certificate';
+                btn.disabled = false;
+                const resultArea = document.getElementById('resultArea');
+                if (res.status === 200) {
+                    const json = await res.json();
+                    const d = json.data;
+                    resultArea.innerHTML = `\n                        <div class="success">✅ Certificate found for <strong>${d.name}</strong></div>\n                        <p>Event: ${d.event} · Issued: ${d.issued_at}</p>\n                        <a class="btn" href="${d.download_url}" target="_blank" rel="noopener">📥 Download Certificate</a>`;
+                } else if (res.status === 404) {
+                    resultArea.innerHTML = '<div class="error">❌ Certificate not found</div>';
+                } else {
+                    const j = await res.json().catch(()=>({}));
+                    resultArea.innerHTML = `<div class="error">❌ ${j.message || 'Unexpected error'}</div>`;
+                }
+            }).catch(err => {
+                document.getElementById('resultArea').innerHTML = '<div class="error">❌ Network error</div>';
+                btn.innerHTML = '🔍 Verify & Get Certificate';
+                btn.disabled = false;
+            });
+        });
+
+        // Auto-focus on email field
+        document.getElementById('email').focus();
+    </script>
 </body>
 </html>

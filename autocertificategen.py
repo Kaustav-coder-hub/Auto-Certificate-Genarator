@@ -39,7 +39,10 @@ The JISCE Coding Club
 
 # Google Sheets
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-creds = Credentials.from_service_account_file("trackbot-56f02-466007-4bc2606df4b9.json", scopes=SCOPES)
+SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE", "static/serviceAccountKey.json")
+if not os.path.exists(SERVICE_ACCOUNT_FILE):
+    raise FileNotFoundError(f"Service account file not found: {SERVICE_ACCOUNT_FILE}")
+creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 gc = gspread.authorize(creds)
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1X3-st3h1W3vJA-8fxmzIMPg0Wy5Ny6TyW0u6yrJag_Y/edit?gid=0#gid=0"
