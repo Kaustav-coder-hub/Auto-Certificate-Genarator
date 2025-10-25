@@ -3,15 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Certificate Verification Portal</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles1.css') }}">
+    <title>CertiPortal - Certificate Management System</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <h1>🎓 Certificate Verification Portal</h1>
+    <!-- Loading Overlay -->
+    <div id="loading" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <!-- Main Application Container -->
+    <div id="app" class="app">
         
-        <div class="info">
-            Enter your registered email address and select the event to verify and download your certificate.
+        <!-- Public Landing Page -->
+        <div id="landing-page" class="page active">
+            <div class="landing-container">
+                <header class="landing-header">
+                    <div class="container">
+                        <div class="logo">
+                            <h1>CertiPortal</h1>
+                            <span>Certificate Management System</span>
+                        </div>
+                        <nav class="landing-nav">
+                            <button id="admin-login-btn" class="btn btn--primary">Admin Login</button>
+                        </nav>
+                    </div>
+                </header>
+
+                <main class="landing-main">
+                    <div class="container">
+                        <div class="hero-section">
+                            <h2>Verify Your Certificate</h2>
+                            <p>Enter your email address and select the event to download your certificate</p>
+                            
+                            <div class="verification-form-container">
+                                <form id="verification-form" class="verification-form">
+                                    <div class="form-group">
+                                        <label for="email" class="form-label">Email Address</label>
+                                        <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="event-select" class="form-label">Select Event</label>
+                                        <select id="event-select" class="form-control" required>
+                                            <option value="">Choose an event</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn--primary btn--full-width">Verify Certificate</button>
+                                </form>
+                                
+                                <div id="verification-result" class="verification-result hidden"></div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
         </div>
         
         <form method="post" id="verifyForm">
@@ -56,13 +106,54 @@
             {% endif %}
         </div>
 
-        <button type="button" class="btn" onclick="window.location.href='/admin'">
-            🚀 Generate Bulk Website
-        </button>
+    <!-- Other Modals -->
+    <div id="create-event-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Event</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="create-event-form" class="modal-body">
+                <div class="form-group">
+                    <label for="event-name" class="form-label">Event Name</label>
+                    <input type="text" id="event-name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-template" class="form-label">Certificate Template</label>
+                    <input type="file" id="event-template" class="form-control" accept="image/*">
+                    <small>Upload a certificate template image</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn--secondary modal-cancel">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Create Event</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-        <div class="footer">
-            Secure certificate verification system<br>
-            © 2025 Certificate Management Portal
+    <div id="upload-csv-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Upload Participants CSV</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="upload-csv-form" class="modal-body">
+                <div class="form-group">
+                    <label for="csv-event-select" class="form-label">Select Event</label>
+                    <select id="csv-event-select" class="form-control" required>
+                        <option value="">Choose an event</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="csv-file" class="form-label">CSV File</label>
+                    <input type="file" id="csv-file" class="form-control" accept=".csv" required>
+                    <small>Expected format: Name, Email, Phone</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn--secondary modal-cancel">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Upload</button>
+                </div>
+            </form>
         </div>
     </div>
 

@@ -26,9 +26,6 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-this'
 # Path to admin user data file
 ADMIN_USERS_FILE = 'admin_users.json'
 
-import json
-import hashlib
-
 def load_admin_users():
     if not os.path.exists(ADMIN_USERS_FILE):
         return {}
@@ -65,6 +62,7 @@ limiter = Limiter(
 # Logging configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 # Configuration
 DRIVE_FOLDER_ID = os.getenv("DRIVE_FOLDER_ID", "1y-IZ41vP_OdGIGxTg0skWO-YHox8Vyhd")
@@ -379,8 +377,9 @@ def verify():
             error = "Service configuration error. Please contact support."
             logger.error("Service account file not found")
         except Exception as e:
-            logger.error(f"Unexpected error during certificate verification: {str(e)}")
-            error = "An unexpected error occurred. Please try again later or contact support."
+            logger.error(f"Error during certificate lookup: {e}")
+            error = "Certificate verification service temporarily unavailable. Please try again later."
+            return render_template("index.html", events=EVENTS, error=error)
     
     return render_template(
         "index.html",
@@ -457,7 +456,7 @@ def health_check():
     """Health check endpoint for monitoring"""
     try:
         # Test Drive API connection
-        creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+        creds = Credentials.from_service_account_info(json.loads(os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')), scopes=SCOPES)
         drive_service = build('drive', 'v3', credentials=creds)
         
         # Simple API test

@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: auto-certificate-generator
+    runtime: python
+    buildCommand: ""
+    startCommand: "gunicorn certificate-app:app"
+    autoDeploy: true
+    envVars:
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        value: "<your-service-account-json>"
+      # Add other environment variables as needed
