@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Verify Certificate{% endblock %}
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+{% endblock %}
+{% block content %}
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0"><i class="fas fa-certificate"></i> Verify Your Certificate</h4>
+                    </div>
+                    <div class="card-body">
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <form method="POST" action="{{ url_for('verify_certificate_download') }}">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="email" name="email" required 
+                                       placeholder="Enter your registered email">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="event" class="form-label">Event Name (Optional)</label>
+                                <input type="text" class="form-control" id="event" name="event" 
+                                       placeholder="Leave blank if unsure">
+                                <div class="form-text">If you attended multiple events, specify the event name.</div>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Verify & Download Certificate
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="text-center mt-3">
+                            <a href="{{ url_for('index') }}" class="text-muted">← Back to Home</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://kit.fontawesome.com/your-fontawesome-kit.js"></script>
+{% endblock %}

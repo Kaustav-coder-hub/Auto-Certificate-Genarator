@@ -1,5 +1,6 @@
 # Complete Flask Certificate Verification Application
 from flask import Flask, render_template, request, render_template_string, redirect, url_for, session, flash
+from flask import Flask, render_template, request, render_template_string, redirect, url_for, session, flash, jsonify
 from flask_talisman import Talisman
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
@@ -28,6 +29,8 @@ ADMIN_USERS_FILE = 'admin_users.json'
 
 import json
 import hashlib
+
+CERT_DB = 'certificates.db'
 
 def load_admin_users():
     if not os.path.exists(ADMIN_USERS_FILE):
@@ -163,6 +166,11 @@ def ensure_cert_table():
 
 def seed_db_from_cert_db():
     """Insert entries from CERT_DB into the database if they don't exist."""
+    # If CERT_DB isn't an in-memory iterable of dicts (e.g. it's a filename string), skip seeding.
+    if not isinstance(CERT_DB, list):
+        logger.info("Skipping DB seeding: CERT_DB is not an in-memory list")
+        return
+
     conn = get_db_connection()
     try:
         if DB_TYPE == 'mysql' and MYSQL_HOST and MYSQL_USER and MYSQL_DB:
@@ -264,7 +272,7 @@ def handle_drive_api_errors(f):
                 error="Certificate verification service temporarily unavailable. Please try again later."), 503
     return decorated_function
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET', 'POST'], endpoint='index')
 @limiter.limit("10 per minute")  # Prevent abuse
 @handle_drive_api_errors
 def verify():
@@ -485,9 +493,179 @@ def bulk_generate():
     <a href="/">← Back to Verification Portal</a>
     """)
 
-@app.route('/admin')
-def admin_dashboard():
+@app.route('/admin', endpoint='admin')
+def admin_signup_page():
+    """Signup page - if already authenticated, go to dashboard"""
+    if session.get('admin_authenticated'):
+        return redirect(url_for('admin_dashboard'))
     return render_template('admin.html')
+
+@app.route('/admin/dashboard', endpoint='admin_dashboard')
+def admin_dashboard_page():
+    """Render the bulk certificate generation dashboard"""
+    if not session.get('admin_authenticated'):
+        return redirect(url_for('login'))
+    return render_template('admin_dashboard.html')
+
+@app.route('/admin/generate-bulk', methods=['POST'])
+@csrf.exempt
+@limiter.limit("5 per hour")
+def generate_bulk_certificates():
+    """Handle bulk certificate generation from uploaded template and CSV"""
+    if not session.get('admin_authenticated'):
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
+    
+    try:
+        # Get uploaded files
+        template_file = request.files.get('template')
+        csv_file = request.files.get('csv')
+        
+        if not template_file or not csv_file:
+            return jsonify({'status': 'error', 'message': 'Missing template or CSV file'}), 400
+        
+        # Get configuration
+        font_family = request.form.get('fontFamily', 'Calligraphy Brilliant')
+        font_size = int(request.form.get('fontSize', 75))
+        text_color = request.form.get('textColor', '#141e3c')
+        event_name = request.form.get('eventName', 'CampusToCode')
+        center_x = int(request.form.get('centerX', 1013))
+        center_y = int(request.form.get('centerY', 746))
+        
+        # Save uploaded files
+        import os
+        from werkzeug.utils import secure_filename
+        import csv as csv_module
+        from PIL import Image, ImageDraw, ImageFont
+        import smtplib
+        from email.message import EmailMessage
+        
+        # Create temp directories
+        os.makedirs('uploads/templates', exist_ok=True)
+        os.makedirs('uploads/csv', exist_ok=True)
+        os.makedirs('certificates', exist_ok=True)
+        
+        # Save template
+        template_filename = secure_filename(template_file.filename)
+        template_path = os.path.join('uploads/templates', template_filename)
+        template_file.save(template_path)
+        
+        # Save and parse CSV
+        csv_filename = secure_filename(csv_file.filename)
+        csv_path = os.path.join('uploads/csv', csv_filename)
+        csv_file.save(csv_path)
+        
+        # Parse CSV and generate certificates
+        participants = []
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            reader = csv_module.DictReader(f)
+            for row in reader:
+                participants.append({
+                    'name': row.get('Name', '').strip(),
+                    'email': row.get('Email', '').strip()
+                })
+        
+        # Convert hex color to RGB
+        text_color_rgb = tuple(int(text_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+        
+        # Generate certificates
+        generated_count = 0
+        for participant in participants:
+            if not participant['name'] or not participant['email']:
+                continue
+                
+            try:
+                # Load template
+                img = Image.open(template_path).convert('RGBA')
+                draw = ImageDraw.Draw(img)
+                
+                # Load font
+                font_path = f"fonts/{font_family}.ttf"
+                if not os.path.exists(font_path):
+                    font_path = "fonts/Calligraphy Brilliant.ttf"  # fallback
+                font = ImageFont.truetype(font_path, font_size)
+                
+                # Draw name
+                name = participant['name']
+                bbox = draw.textbbox((0, 0), name, font=font)
+                text_w = bbox[2] - bbox[0]
+                text_h = bbox[3] - bbox[1]
+                x = center_x - text_w // 2
+                y = center_y - text_h // 2
+                
+                draw.text((x, y), name, fill=text_color_rgb, font=font)
+                
+                # Save certificate
+                cert_filename = f"{event_name}_{name.replace(' ', '_')}.png"
+                cert_path = os.path.join('certificates', cert_filename)
+                img.save(cert_path, format='PNG')
+                
+                generated_count += 1
+                logger.info(f"Generated certificate for {name}")
+                
+            except Exception as e:
+                logger.error(f"Error generating certificate for {participant['name']}: {e}")
+                continue
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Successfully generated {generated_count} certificates',
+            'total': generated_count
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Bulk generation error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# -------- Additional UI routes to connect new templates --------
+
+@app.route('/mode', methods=['GET'])
+def mode_selection():
+    if not session.get('admin_authenticated'):
+        return redirect(url_for('login', next=request.url))
+    return render_template('mode_selection.html')
+
+@app.route('/configure-coordinates', methods=['GET'])
+def configure_coordinates():
+    if not session.get('admin_authenticated'):
+        return redirect(url_for('login'))
+    return render_template('configure_coordinates.html')
+
+@app.route('/coming-soon', methods=['GET'])
+def coming_soon():
+    return render_template('coming_soon.html')
+
+@app.route('/progress', methods=['GET'])
+def generate_progress():
+    if not session.get('admin_authenticated'):
+        return redirect(url_for('login'))
+    return render_template('generate_progress.html')
+
+@app.route('/admin/upload-template', methods=['GET'])
+def upload_template_page():
+    if not session.get('admin_authenticated'):
+        return redirect(url_for('login'))
+    return render_template('upload_custom_template.html')
+
+@app.route('/admin/upload-template', methods=['POST'])
+@csrf.exempt
+def upload_template_post():
+    if not session.get('admin_authenticated'):
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
+    try:
+        file = request.files.get('template')
+        name = request.form.get('name', '').strip()
+        if not file or not name:
+            return jsonify({'status': 'error', 'message': 'Missing template or name'}), 400
+        from werkzeug.utils import secure_filename
+        os.makedirs('uploads/templates', exist_ok=True)
+        filename = secure_filename(file.filename)
+        save_path = os.path.join('uploads/templates', filename)
+        file.save(save_path)
+        logger.info(f"Custom template uploaded: {filename} as {name}")
+        return jsonify({'status': 'success', 'message': 'Template uploaded', 'filename': filename}), 200
+    except Exception as e:
+        logger.error(f"Upload template error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # Admin login route
 @app.route('/admin/login', methods=['POST'])
@@ -503,7 +681,7 @@ def admin_login():
         return redirect(url_for('admin_dashboard'))
     else:
         flash('Invalid email or password.', 'error')
-        return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('login'))
 
 # Admin signup route
 @app.route('/admin/signup', methods=['POST'])
@@ -511,16 +689,42 @@ def admin_signup():
     email = request.form.get('email', '').strip().lower()
     password = request.form.get('password', '')
     users = load_admin_users()
+    
+    # Check local storage first
     if email in users:
-        flash('Email already registered.', 'error')
-        return redirect(url_for('admin_dashboard'))
+        flash('Email already registered. Please log in.', 'error')
+        return redirect(url_for('login'))
+    
+    # Try to create user in Firebase Authentication (if initialized)
+    firebase_user_created = False
+    try:
+        if firebase_admin._apps:  # Check if Firebase is initialized
+            # Create user in Firebase Authentication
+            firebase_user = firebase_auth.create_user(
+                email=email,
+                password=password,
+                email_verified=False
+            )
+            firebase_user_created = True
+            logger.info(f"Firebase user created: {firebase_user.uid} for {email}")
+    except Exception as e:
+        logger.warning(f"Firebase user creation failed (continuing with local auth): {e}")
+    
+    # Always save to local storage as backup
     users[email] = {
-        'password': hash_password(password)
+        'password': hash_password(password),
+        'firebase_uid': firebase_user.uid if firebase_user_created else None
     }
     save_admin_users(users)
+    
     session['admin_authenticated'] = True
     session['admin_email'] = email
-    flash('Signup successful! You are now logged in.', 'success')
+    
+    if firebase_user_created:
+        flash('Signup successful! Account created in Firebase. You are now logged in.', 'success')
+    else:
+        flash('Signup successful! You are now logged in. (Local auth only)', 'success')
+    
     return redirect(url_for('admin_dashboard'))
 
 # Admin logout route
@@ -529,7 +733,45 @@ def admin_logout():
     session.pop('admin_authenticated', None)
     session.pop('admin_email', None)
     flash('Logged out successfully.', 'success')
-    return redirect(url_for('admin_dashboard'))
+    return redirect(url_for('login'))
+
+# Dedicated login page/routes
+@app.route('/login', methods=['GET'])
+def login():
+    # If already logged in, go straight to dashboard
+    if session.get('admin_authenticated'):
+        return redirect(url_for('admin_dashboard'))
+    return render_template('login.html')
+
+@app.route('/login', methods=['POST'], endpoint='login_post')
+def login_post():
+    email = request.form.get('email', '').strip().lower()
+    password = request.form.get('password', '')
+    users = load_admin_users()
+    
+    # Try local authentication first
+    if email in users and users[email]['password'] == hash_password(password):
+        session['admin_authenticated'] = True
+        session['admin_email'] = email
+        flash('Welcome back!', 'success')
+        return redirect(url_for('admin_dashboard'))
+    
+    # If local auth fails and Firebase is available, try Firebase Authentication
+    try:
+        if firebase_admin._apps:  # Check if Firebase is initialized
+            # Get user by email from Firebase
+            firebase_user = firebase_auth.get_user_by_email(email)
+            logger.info(f"Firebase user found: {firebase_user.uid}")
+            
+            # Note: Firebase Admin SDK cannot verify passwords directly
+            # This is a limitation - password verification requires client SDK or REST API
+            flash('Please use the Google/GitHub login buttons for Firebase authentication.', 'info')
+            return redirect(url_for('login'))
+    except Exception as e:
+        logger.debug(f"Firebase auth attempt failed: {e}")
+    
+    flash('Invalid email or password.', 'error')
+    return redirect(url_for('login'))
 
 # Firebase admin login route (initialize only if service account file exists)
 if os.path.exists(SERVICE_ACCOUNT_FILE):

@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block title %}Bulk Certificate Generator - Admin Dashboard{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/certificate-generator.css') }}">
+{% endblock %}
+{% block content %}
+    <div class="dashboard-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <a href="{{ url_for('index') }}" class="back-btn">← Back to Portal</a>
+            <a href="{{ url_for('admin_logout') }}" class="back-btn" style="background: #ef4444; color: white;">🚪 Logout</a>
+        </div>
+        
+        <div class="header">
+            <h1>🎓 Bulk Certificate Generator</h1>
+            <p>Upload your certificate template and participant data to generate certificates in bulk</p>
+        </div>
+        
+        <!-- Certificate Template Upload -->
+        <div class="upload-section">
+            <h2>📄 1. Upload Certificate Template</h2>
+            <div class="upload-box" id="templateBox">
+                <div class="upload-icon">🖼️</div>
+                <p><strong>Drag & Drop</strong> your certificate template here</p>
+                <p style="color: #7f8c8d; margin: 10px 0;">or</p>
+                <label for="templateInput" class="upload-label">Browse Files</label>
+                <input type="file" id="templateInput" class="file-input" accept="image/png,image/jpeg">
+                <p style="color: #95a5a6; font-size: 0.9rem; margin-top: 15px;">
+                    Supported formats: PNG, JPEG (Recommended: 1920x1080px or higher)
+                </p>
+            </div>
+            <div class="file-preview" id="templatePreview">
+                <!-- Template preview will be inserted here -->
+            </div>
+        </div>
+        
+        <!-- CSV Data Upload -->
+        <div class="upload-section">
+            <h2>📊 2. Upload Participant Data (CSV)</h2>
+            <div class="upload-box" id="csvBox">
+                <div class="upload-icon">📑</div>
+                <p><strong>Drag & Drop</strong> your CSV file here</p>
+                <p style="color: #7f8c8d; margin: 10px 0;">or</p>
+                <label for="csvInput" class="upload-label">Browse Files</label>
+                <input type="file" id="csvInput" class="file-input" accept=".csv">
+                <p style="color: #95a5a6; font-size: 0.9rem; margin-top: 15px;">
+                    CSV must contain columns: <strong>Name, Email</strong>
+                </p>
+            </div>
+            <div class="file-preview" id="csvPreview">
+                <!-- CSV preview will be inserted here -->
+            </div>
+        </div>
+        
+        <!-- Configuration -->
+        <div class="upload-section">
+            <h2>⚙️ 3. Configure Certificate Settings</h2>
+            <div class="config-section">
+                <div class="config-group">
+                    <label for="fontFamily">Font Family</label>
+                    <select id="fontFamily">
+                        <option value="Calligraphy Brilliant">Calligraphy Brilliant</option>
+                        <option value="Rockybilly">Rockybilly</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                    </select>
+                </div>
+                
+                <div class="config-group">
+                    <label for="fontSize">Font Size (px)</label>
+                    <input type="number" id="fontSize" value="75" min="10" max="200">
+                </div>
+                
+                <div class="config-group">
+                    <label for="textColor">Text Color</label>
+                    <input type="color" id="textColor" value="#141e3c">
+                </div>
+                
+                <div class="config-group">
+                    <label for="eventName">Event Name</label>
+                    <input type="text" id="eventName" placeholder="e.g., CampusToCode" value="CampusToCode">
+                </div>
+                
+                <div class="config-group">
+                    <label for="centerX">Text Center X Position</label>
+                    <input type="number" id="centerX" value="1013" min="0">
+                </div>
+                
+                <div class="config-group">
+                    <label for="centerY">Text Center Y Position</label>
+                    <input type="number" id="centerY" value="746" min="0">
+                </div>
+            </div>
+            
+            <button class="generate-btn" id="generateBtn" disabled>
+                🚀 Generate Certificates
+            </button>
+        </div>
+        
+        <!-- Progress Section -->
+        <div class="progress-section" id="progressSection">
+            <h2>📈 Generation Progress</h2>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+            <div class="status-log" id="statusLog">
+                <p>📋 Initializing certificate generation...</p>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/admin_dashboard.js') }}"></script>
+{% endblock %}

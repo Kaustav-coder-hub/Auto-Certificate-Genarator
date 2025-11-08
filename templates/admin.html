@@ -1,15 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Certificate Verification</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Font Awesome CDN for Google icon -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <!-- Project stylesheet -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles1.css') }}">
-</head>
-<body>
+{% extends 'base.html' %}
+{% block title %}Certificate Verification{% endblock %}
+{% block extra_css %}
+<!-- Font Awesome CDN for Google icon -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+{% endblock %}
+{% block content %}
     <!--<div class="admin-container">
         <h1>Certificate Verification Portal</h1>
         <form method="post">
@@ -57,42 +52,22 @@
                     <button class="social-btn" title="Phone" onclick="firebaseSignIn('phone')">
                         <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@15.12.0/icons/apple.svg" alt="Phone" style="width:24px;height:24px;vertical-align:middle;">
                     </button>
-                   
-                    
                 </div>
                 <form method="post" action="/admin/signup" class="signup-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <label for="signup-name">Full name</label>
                     <input type="text" id="signup-name" name="name" placeholder="John Doe" required>
                     <label for="signup-email">Email</label>
                     <input type="email" id="signup-email" name="email" placeholder="example.email@gmail.com" required>
                     <label for="signup-password">Password</label>
                     <input type="password" id="signup-password" name="password" placeholder="Enter at least 8+ characters" required>
-                    <button type="button" class="signup-btn" onclick="handleEmailSignup()">Sign up</button>
+                    <button type="submit" class="signup-btn">Sign up</button>
                 </form>
-                <div class="auth-switch">Been here before? <a href="#" onclick="showLogin(event)">Log in</a></div>
-                <form method="post" action="/admin/login" class="login-form" style="display:none;">
-                    <label for="admin-email">Email</label>
-                    <input type="email" id="admin-email" name="email" placeholder="Enter your admin email" required>
-                    <label for="admin-password">Password</label>
-                    <input type="password" id="admin-password" name="password" placeholder="Enter your password" required>
-                    <button type="button" class="login-btn" onclick="handleEmailLogin()">Login</button>
-                    <div class="auth-switch">New here? <a href="#" onclick="showSignup(event)">Sign up</a></div>
-                </form>
+                <p style="margin-top:12px;font-size:.9rem;color:#555;">Already have an account? <a href="{{ url_for('login') }}" style="color:#2563eb;text-decoration:none;">Log in here</a>.</p>
             </div>
         </div>
     </div>
-    <script>
-    function showLogin(e) {
-        e.preventDefault();
-        document.querySelector('.signup-form').style.display = 'none';
-        document.querySelector('.login-form').style.display = 'block';
-    }
-    function showSignup(e) {
-        e.preventDefault();
-        document.querySelector('.login-form').style.display = 'none';
-        document.querySelector('.signup-form').style.display = 'block';
-    }
-    </script>
+    <!-- Removed legacy toggle script (login form now separate at /login) -->
     <!-- Styles moved to static/styles1.css (extracted) -->
     {% else %}
             <h1>Admin Certificate Management Portal</h1>
@@ -166,70 +141,7 @@
             <a class="back-link" href="/">← Back to Verification Portal</a>
         {% endif %}
     </div>
-    <!-- Firebase JS SDK -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyDoqtK-CAMYjDy8jb4ASlqCad_ehqRzKkw",
-        authDomain: "certificate-management-6710c.firebaseapp.com",
-        projectId: "certificate-management-6710c",
-        storageBucket: "certificate-management-6710c.firebasestorage.app",
-        messagingSenderId: "5631280297",
-        appId: "1:5631280297:web:346ddd973de20dc6f995b8",
-        measurementId: "G-47JG3SN0GN"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-
-    // Firebase Email/Password signup
-    window.handleEmailSignup = function() {
-        const email = document.getElementById('signup-email').value;
-        const password = document.getElementById('signup-password').value;
-        createUserWithEmailAndPassword(auth, email, password)
-            .then(userCredential => userCredential.user.getIdToken())
-            .then(idToken => sendTokenToBackend(idToken))
-            .catch(err => alert(err.message));
-    }
-
-    // Firebase Email/Password login
-    window.handleEmailLogin = function() {
-        const email = document.getElementById('admin-email').value;
-        const password = document.getElementById('admin-password').value;
-        signInWithEmailAndPassword(auth, email, password)
-            .then(userCredential => userCredential.user.getIdToken())
-            .then(idToken => sendTokenToBackend(idToken))
-            .catch(err => alert(err.message));
-    }
-
-    window.firebaseSignIn = function(providerName) {
-        let provider;
-        if (providerName === 'google') {
-            provider = new GoogleAuthProvider();
-        } else if (providerName === 'github') {
-            provider = new GithubAuthProvider();
-        } else {
-            alert('Provider not implemented');
-            return;
-        }
-        signInWithPopup(auth, provider)
-            .then(result => result.user.getIdToken())
-            .then(idToken => sendTokenToBackend(idToken))
-            .catch(err => alert(err.message));
-    }
-
-    function sendTokenToBackend(idToken) {
-        fetch('/admin/firebase-login', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({idToken})
-        }).then(res => {
-            if (res.ok) window.location.reload();
-            else alert('Authentication failed');
-        });
-    }
-</script>
-</body>
-</html>
+{% endblock %}
+{% block extra_js %}
+<script type="module" src="{{ url_for('static', filename='js/admin_auth.js') }}"></script>
+{% endblock %}

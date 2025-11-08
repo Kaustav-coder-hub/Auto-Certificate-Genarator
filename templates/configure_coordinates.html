@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Configure Coordinates{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mode-selection.css') }}">
+{% endblock %}
+{% block content %}
+<div class="container" style="max-width:900px;margin:40px auto;">
+	<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+		<h1 style="margin: 0;">🧭 Configure Text Coordinates</h1>
+		<a href="{{ url_for('admin_logout') }}" style="padding:10px 20px;background:#ef4444;color:white;text-decoration:none;border-radius:8px;font-weight:600;">🚪 Logout</a>
+	</div>
+	<p style="color:#555;">Adjust where participant names will be placed on the certificate template. Upload a template and click to set the approximate center point.</p>
+	<div id="coordinate-tool" style="margin-top:24px;">
+		<input type="file" id="coordTemplate" accept="image/*" style="margin-bottom:16px;">
+		<div id="canvasWrapper" style="position:relative;max-width:100%;border:1px dashed #ccc;display:none;">
+			<img id="templatePreviewImg" style="max-width:100%;display:block;" alt="Template Preview" />
+			<div id="marker" style="position:absolute;width:14px;height:14px;background:#ef4444;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;display:none;"></div>
+		</div>
+		<div style="margin-top:16px;display:flex;gap:16px;flex-wrap:wrap;">
+			<label>X: <input type="number" id="coordX" value="0" style="width:100px;"></label>
+			<label>Y: <input type="number" id="coordY" value="0" style="width:100px;"></label>
+			<button class="btn" id="saveCoords">Save Coordinates</button>
+			<a class="btn" href="{{ url_for('admin_dashboard') }}">Use In Generator →</a>
+		</div>
+	</div>
+	<div id="coordStatus" style="margin-top:20px;color:#2563eb;font-weight:600;"></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/coordinate-selector.js') }}"></script>
+{% endblock %}
