@@ -1,58 +1,49 @@
 {% extends 'base.html' %}
-{% block title %}Certificate Verification{% endblock %}
-{% block extra_css %}
-<!-- Font Awesome CDN for Google icon -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-{% endblock %}
+{% block title %}Admin Signup{% endblock %}
 {% block content %}
-    <!--<div class="admin-container">
-        <h1>Certificate Verification Portal</h1>
-        <form method="post">
-            <label for="email">Email Address</label>
-            <input type="email" id="email" name="email" required placeholder="Enter your registered email" value="{{ request.form.get('email', '') }}">
-            <label for="event">Select Event</label>
-            <select id="event" name="event" required>
-                <option value="">-- Choose an event --</option>
-                {% for event in events %}
-                    <option value="{{ event }}" {% if request.form.get('event') == event %}selected{% endif %}>{{ event }}</option>
-                {% endfor %}
-            </select>
-            <button type="submit">Verify Certificate</button>
-        </form>
-        {% if error %}
-            <div class="error">{{ error }}</div>
-        {% endif %}
-        {% if cert_link %}
-            <a href="{{ cert_link }}" class="success" target="_blank">Download Your Certificate</a>
-        {% endif %}
-    </div>-->
     {% if not session.get('admin_authenticated') %}
     <div class="split-auth-bg">
         <div class="split-auth-left">
             <div class="logo">Logo</div>
             <div class="auth-icons">
-                <span class="icon">✍️</span>
-                <span class="icon">📄</span>
-                <span class="icon">😍</span>
+                <span class="icon">??????</span>
+                <span class="icon">????</span>
+                <span class="icon">????</span>
             </div>
-            <h2 class="auth-title">Voluptate labore incididunt dolor irure</h2>
-            <p class="auth-desc">Mollit cupidatat consequat ipsum et quis aute sit ipsum culpa exceptur sunt proident eu irure do aute nulla aute. Commodo ut est consequat reprehenderit.</p>
+            <h2 class="auth-title">Certificate Management System</h2>
+            <p class="auth-desc">Create an account to access the admin dashboard and manage bulk certificate generation.</p>
         </div>
         <div class="split-auth-right">
             <div class="auth-card">
                 <h2 class="auth-card-title">Create an account</h2>
-                <p class="auth-card-desc">Start your 30 day free trial</p>
-                <div class="auth-social">
-                    <button class="social-btn" title="Google" onclick="firebaseSignIn('google')">
-                        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@15.12.0/icons/google.svg" alt="Google" style="width:24px;height:24px;vertical-align:middle;">
+                <p class="auth-card-desc">Get started with certificate management</p>
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    {% for category, msg in messages %}
+                      <div class="flash {{ category }}" style="margin-bottom: 16px; padding: 12px; border-radius: 6px; background: {% if category == 'error' %}#fee2e2{% elif category == 'success' %}#d1fae5{% else %}#dbeafe{% endif %}; color: {% if category == 'error' %}#991b1b{% elif category == 'success' %}#065f46{% else %}#1e40af{% endif %};">
+                        {{ msg }}
+                      </div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+
+                <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                    <button data-auth="google" class="social-btn" title="Sign up with Google" 
+                            style="flex: 1; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@15.12.0/icons/google.svg" alt="Google" style="width:20px;height:20px;">
                     </button>
-                     <button class="social-btn" title="Github" onclick="firebaseSignIn('github')">
-                        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@15.12.0/icons/github.svg" alt="Github" style="width:24px;height:24px;vertical-align:middle;">
-                    </button>
-                    <button class="social-btn" title="Phone" onclick="firebaseSignIn('phone')">
-                        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@15.12.0/icons/apple.svg" alt="Phone" style="width:24px;height:24px;vertical-align:middle;">
+                    <button data-auth="github" class="social-btn" title="Sign up with GitHub"
+                            style="flex: 1; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@15.12.0/icons/github.svg" alt="GitHub" style="width:20px;height:20px;">
                     </button>
                 </div>
+
+                <div style="margin: 16px 0; text-align: center; color: #6b7280; position: relative;">
+                    <span style="background: #fff; padding: 0 10px; position: relative; z-index: 1;">OR</span>
+                    <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #e5e7eb; z-index: 0;"></div>
+                </div>
+                
                 <form method="post" action="/admin/signup" class="signup-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <label for="signup-name">Full name</label>
@@ -60,88 +51,23 @@
                     <label for="signup-email">Email</label>
                     <input type="email" id="signup-email" name="email" placeholder="example.email@gmail.com" required>
                     <label for="signup-password">Password</label>
-                    <input type="password" id="signup-password" name="password" placeholder="Enter at least 8+ characters" required>
+                    <input type="password" id="signup-password" name="password" placeholder="Enter at least 8+ characters" required minlength="6">
                     <button type="submit" class="signup-btn">Sign up</button>
                 </form>
                 <p style="margin-top:12px;font-size:.9rem;color:#555;">Already have an account? <a href="{{ url_for('login') }}" style="color:#2563eb;text-decoration:none;">Log in here</a>.</p>
             </div>
         </div>
     </div>
-    <!-- Removed legacy toggle script (login form now separate at /login) -->
-    <!-- Styles moved to static/styles1.css (extracted) -->
     {% else %}
-            <h1>Admin Certificate Management Portal</h1>
-            <!-- Authentication & Dashboard -->
-            <section class="section">
-                <h2>1. Admin Authentication & Dashboard</h2>
-                <div class="dashboard">
-                    <div class="stat">
-                        <span class="stat-title">Total Certificates</span>
-                        <span class="stat-value" id="total-certificates">0</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-title">Active Events</span>
-                        <span class="stat-value" id="active-events">0</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-title">Participant Count</span>
-                        <span class="stat-value" id="participant-count">0</span>
-                    </div>
-                </div>
-            </section>
-            <!-- Event Management -->
-            <section class="section">
-                <h2>2. Event Management</h2>
-                <form id="event-form">
-                    <label>Event Name: <input type="text" name="event_name" required></label>
-                    <label>Upload Template: <input type="file" name="template_file" accept=".png,.pdf"></label>
-                    <label>Font: <select name="font">
-                        <option value="Calligraphy Brilliant">Calligraphy Brilliant</option>
-                        <option value="Rockybilly">Rockybilly</option>
-                    </select></label>
-                    <label>Font Size: <input type="number" name="font_size" min="10" max="100" value="32"></label>
-                    <label>Font Color: <input type="color" name="font_color" value="#000000"></label>
-                    <button type="button" id="preview-btn">Preview</button>
-                    <div id="template-preview">Template preview will appear here.</div>
-                </form>
-            </section>
-            <!-- Participant Data Management -->
-            <section class="section">
-                <h2>3. Participant Data Management</h2>
-                <form id="participant-upload-form" enctype="multipart/form-data">
-                    <label>Upload Excel/CSV: <input type="file" name="participant_file" accept=".csv,.xlsx"></label>
-                    <button type="button" id="upload-participants-btn">Upload</button>
-                    <div id="upload-progress">Progress: 0%</div>
-                </form>
-                <div id="participant-list">Participant list will appear here.</div>
-                <button type="button" id="add-participant-btn">Add Participant</button>
-            </section>
-            <!-- Certificate Generation & Distribution -->
-            <section class="section">
-                <h2>4. Certificate Generation & Distribution</h2>
-                <form id="generate-certificates-form">
-                    <label>Email Template: <textarea name="email_template" rows="4" cols="50">Dear {{name}},\nYour certificate for {{event}} is attached.</textarea></label>
-                    <label>SMTP Email: <input type="email" name="smtp_email"></label>
-                    <label>SMTP Password: <input type="password" name="smtp_password"></label>
-                    <button type="button" id="generate-btn">Generate Certificates</button>
-                    <div id="generation-progress">Progress: 0%</div>
-                </form>
-                <button type="button" id="download-zip-btn">Download All Certificates (ZIP)</button>
-            </section>
-            <!-- Analytics & Tracking -->
-            <section class="section">
-                <h2>5. Analytics & Tracking</h2>
-                <div id="analytics">
-                    <div>Email Delivery Status: <span id="email-status">N/A</span></div>
-                    <div>Certificate Download Statistics: <span id="download-stats">N/A</span></div>
-                    <div>Participant Engagement: <span id="engagement-metrics">N/A</span></div>
-                    <button type="button" id="export-report-btn">Export Report (PDF/Excel)</button>
-                </div>
-            </section>
-            <a class="back-link" href="/">← Back to Verification Portal</a>
-        {% endif %}
+    <div style="padding: 40px; max-width: 1200px; margin: 0 auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <h1>Welcome, {{ session.get('admin_email') }}!</h1>
+            <a href="{{ url_for('logout') }}" class="btn" style="background: #ef4444; text-decoration: none; padding: 10px 20px; border-radius: 6px; color: white;">Logout</a>
+        </div>
+        <p>You are logged in! Go to the <a href="{{ url_for('mode_selection') }}" style="color: #2563eb;">dashboard</a> to manage certificates.</p>
     </div>
+    {% endif %}
 {% endblock %}
 {% block extra_js %}
-<script type="module" src="{{ url_for('static', filename='js/admin_auth.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/firebase_oauth.js') }}"></script>
 {% endblock %}

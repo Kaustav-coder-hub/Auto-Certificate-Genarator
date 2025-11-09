@@ -1,113 +1,299 @@
 {% extends 'base.html' %}
-{% block title %}Bulk Certificate Generator - Admin Dashboard{% endblock %}
+{% block title %}Admin Dashboard - Certificate Generator{% endblock %}
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modern-dashboard.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/certificate-generator.css') }}">
 {% endblock %}
 {% block content %}
     <div class="dashboard-container">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <a href="{{ url_for('index') }}" class="back-btn">← Back to Portal</a>
-            <a href="{{ url_for('admin_logout') }}" class="back-btn" style="background: #ef4444; color: white;">🚪 Logout</a>
+        <!-- Dashboard Header -->
+        <div class="dashboard-header" data-aos="fade-down">
+            <div class="dashboard-header-top">
+                <h1 class="dashboard-title">Admin Dashboard</h1>
+                <div class="dashboard-user">
+                    <div class="user-avatar">A</div>
+                    <div class="user-info">
+                        <div class="user-name">{{ session.get('email', 'Admin').split('@')[0].title() }}</div>
+                        <div class="user-role">Administrator</div>
+                    </div>
+                    <button class="logout-btn" onclick="window.location.href='{{ url_for('admin_logout') }}'">
+                        Logout
+                    </button>
+                </div>
+            </div>
+            <p class="dashboard-subtitle">
+                Generate certificates in bulk, manage events, and track your progress
+            </p>
         </div>
-        
-        <div class="header">
-            <h1>🎓 Bulk Certificate Generator</h1>
-            <p>Upload your certificate template and participant data to generate certificates in bulk</p>
+
+        <!-- Quick Stats - Bento Grid -->
+        <div class="bento-grid" data-aos="fade-up">
+            <!-- Total Certificates -->
+            <div class="stat-card stat-card-small">
+                <div class="stat-header">
+                    <div class="stat-icon">🎓</div>
+                    <div class="stat-trend">
+                        ↑ 12%
+                    </div>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-label">Total Certificates</div>
+                    <div class="stat-value" data-counter="5482">0</div>
+                </div>
+                <div class="stat-footer">
+                    Generated this month
+                </div>
+            </div>
+
+            <!-- Active Events -->
+            <div class="stat-card stat-card-small">
+                <div class="stat-header">
+                    <div class="stat-icon">📅</div>
+                    <div class="stat-trend">
+                        ↑ 8%
+                    </div>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-label">Active Events</div>
+                    <div class="stat-value" data-counter="23">0</div>
+                </div>
+                <div class="stat-footer">
+                    Across all departments
+                </div>
+            </div>
+
+            <!-- Success Rate -->
+            <div class="stat-card stat-card-small">
+                <div class="stat-header">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-trend">
+                        ↑ 5%
+                    </div>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-label">Success Rate</div>
+                    <div class="stat-value" data-counter="98">0</div>
+                </div>
+                <div class="stat-footer">
+                    Delivery success rate
+                </div>
+            </div>
+
+            <!-- Pending -->
+            <div class="stat-card stat-card-small">
+                <div class="stat-header">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-trend down">
+                        ↓ 15%
+                    </div>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-label">Pending</div>
+                    <div class="stat-value" data-counter="47">0</div>
+                </div>
+                <div class="stat-footer">
+                    Awaiting generation
+                </div>
+            </div>
         </div>
-        
-        <!-- Certificate Template Upload -->
-        <div class="upload-section">
-            <h2>📄 1. Upload Certificate Template</h2>
-            <div class="upload-box" id="templateBox">
-                <div class="upload-icon">🖼️</div>
-                <p><strong>Drag & Drop</strong> your certificate template here</p>
-                <p style="color: #7f8c8d; margin: 10px 0;">or</p>
-                <label for="templateInput" class="upload-label">Browse Files</label>
-                <input type="file" id="templateInput" class="file-input" accept="image/png,image/jpeg">
-                <p style="color: #95a5a6; font-size: 0.9rem; margin-top: 15px;">
-                    Supported formats: PNG, JPEG (Recommended: 1920x1080px or higher)
-                </p>
+
+        <!-- Quick Actions -->
+        <div class="bento-grid" data-aos="fade-up" data-aos-delay="100">
+            <div class="action-card" onclick="document.getElementById('templateInput').click()">
+                <div class="action-icon">📄</div>
+                <div class="action-title">Upload Template</div>
+                <div class="action-description">
+                    Upload a new certificate template (PNG, JPEG)
+                </div>
+                <button class="action-button">Choose File</button>
             </div>
-            <div class="file-preview" id="templatePreview">
-                <!-- Template preview will be inserted here -->
+
+            <div class="action-card" onclick="document.getElementById('csvInput').click()">
+                <div class="action-icon">📊</div>
+                <div class="action-title">Upload Data</div>
+                <div class="action-description">
+                    Upload participant data via CSV file
+                </div>
+                <button class="action-button">Choose File</button>
             </div>
-        </div>
-        
-        <!-- CSV Data Upload -->
-        <div class="upload-section">
-            <h2>📊 2. Upload Participant Data (CSV)</h2>
-            <div class="upload-box" id="csvBox">
-                <div class="upload-icon">📑</div>
-                <p><strong>Drag & Drop</strong> your CSV file here</p>
-                <p style="color: #7f8c8d; margin: 10px 0;">or</p>
-                <label for="csvInput" class="upload-label">Browse Files</label>
-                <input type="file" id="csvInput" class="file-input" accept=".csv">
-                <p style="color: #95a5a6; font-size: 0.9rem; margin-top: 15px;">
-                    CSV must contain columns: <strong>Name, Email</strong>
-                </p>
-            </div>
-            <div class="file-preview" id="csvPreview">
-                <!-- CSV preview will be inserted here -->
+
+            <div class="action-card" onclick="document.querySelector('.generate-btn').click()">
+                <div class="action-icon">🚀</div>
+                <div class="action-title">Generate</div>
+                <div class="action-description">
+                    Generate certificates in bulk
+                </div>
+                <button class="action-button">Start</button>
             </div>
         </div>
-        
-        <!-- Configuration -->
-        <div class="upload-section">
-            <h2>⚙️ 3. Configure Certificate Settings</h2>
-            <div class="config-section">
-                <div class="config-group">
-                    <label for="fontFamily">Font Family</label>
-                    <select id="fontFamily">
-                        <option value="Calligraphy Brilliant">Calligraphy Brilliant</option>
-                        <option value="Rockybilly">Rockybilly</option>
-                        <option value="Arial">Arial</option>
-                        <option value="Times New Roman">Times New Roman</option>
-                    </select>
+
+        <!-- Main Content - Bento Grid -->
+        <div class="bento-grid" data-aos="fade-up" data-aos-delay="200">
+            <!-- Template Upload Card -->
+            <div class="stat-card stat-card-large">
+                <div class="stat-header">
+                    <h2 class="activity-title">📄 Certificate Template</h2>
                 </div>
-                
-                <div class="config-group">
-                    <label for="fontSize">Font Size (px)</label>
-                    <input type="number" id="fontSize" value="75" min="10" max="200">
+                <div class="upload-box" id="templateBox" style="margin-top: 20px;">
+                    <div class="upload-icon">🖼️</div>
+                    <p><strong>Drag & Drop</strong> your certificate template here</p>
+                    <p style="color: #7f8c8d; margin: 10px 0;">or</p>
+                    <label for="templateInput" class="upload-label">Browse Files</label>
+                    <input type="file" id="templateInput" class="file-input" accept="image/png,image/jpeg">
+                    <p style="color: #95a5a6; font-size: 0.9rem; margin-top: 15px;">
+                        Supported formats: PNG, JPEG (Recommended: 1920x1080px or higher)
+                    </p>
                 </div>
-                
-                <div class="config-group">
-                    <label for="textColor">Text Color</label>
-                    <input type="color" id="textColor" value="#141e3c">
-                </div>
-                
-                <div class="config-group">
-                    <label for="eventName">Event Name</label>
-                    <input type="text" id="eventName" placeholder="e.g., CampusToCode" value="CampusToCode">
-                </div>
-                
-                <div class="config-group">
-                    <label for="centerX">Text Center X Position</label>
-                    <input type="number" id="centerX" value="1013" min="0">
-                </div>
-                
-                <div class="config-group">
-                    <label for="centerY">Text Center Y Position</label>
-                    <input type="number" id="centerY" value="746" min="0">
+                <div class="file-preview" id="templatePreview">
+                    <!-- Template preview will be inserted here -->
                 </div>
             </div>
-            
-            <button class="generate-btn" id="generateBtn" disabled>
-                🚀 Generate Certificates
-            </button>
-        </div>
-        
-        <!-- Progress Section -->
-        <div class="progress-section" id="progressSection">
-            <h2>📈 Generation Progress</h2>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill">0%</div>
+
+            <!-- CSV Upload Card -->
+            <div class="stat-card stat-card-large">
+                <div class="stat-header">
+                    <h2 class="activity-title">📊 Participant Data</h2>
+                </div>
+                <div class="upload-box" id="csvBox" style="margin-top: 20px;">
+                    <div class="upload-icon">📑</div>
+                    <p><strong>Drag & Drop</strong> your CSV file here</p>
+                    <p style="color: #7f8c8d; margin: 10px 0;">or</p>
+                    <label for="csvInput" class="upload-label">Browse Files</label>
+                    <input type="file" id="csvInput" class="file-input" accept=".csv">
+                    <p style="color: #95a5a6; font-size: 0.9rem; margin-top: 15px;">
+                        CSV must contain columns: <strong>Name, Email</strong>
+                    </p>
+                </div>
+                <div class="file-preview" id="csvPreview">
+                    <!-- CSV preview will be inserted here -->
+                </div>
             </div>
-            <div class="status-log" id="statusLog">
-                <p>📋 Initializing certificate generation...</p>
+
+            <!-- Configuration Card -->
+            <div class="stat-card stat-card-large">
+                <div class="stat-header">
+                    <h2 class="activity-title">⚙️ Certificate Settings</h2>
+                </div>
+                <div class="config-section" style="margin-top: 20px;">
+                    <div class="config-group">
+                        <label for="eventName">Event Name</label>
+                        <input type="text" id="eventName" placeholder="e.g., CampusToCode" value="CampusToCode">
+                    </div>
+                    
+                    <div class="config-group">
+                        <label for="fontFamily">Font Family</label>
+                        <select id="fontFamily">
+                            <option value="Calligraphy Brilliant">Calligraphy Brilliant</option>
+                            <option value="Rockybilly">Rockybilly</option>
+                            <option value="Arial">Arial</option>
+                            <option value="Times New Roman">Times New Roman</option>
+                        </select>
+                    </div>
+                    
+                    <div class="config-group">
+                        <label for="fontSize">Font Size (px)</label>
+                        <input type="number" id="fontSize" value="75" min="10" max="200">
+                    </div>
+                    
+                    <div class="config-group">
+                        <label for="textColor">Text Color</label>
+                        <input type="color" id="textColor" value="#141e3c">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Position Settings Card -->
+            <div class="stat-card stat-card-large">
+                <div class="stat-header">
+                    <h2 class="activity-title">📍 Text Position</h2>
+                </div>
+                <div class="config-section" style="margin-top: 20px;">
+                    <div class="config-group">
+                        <label for="centerX">Text Center X Position</label>
+                        <input type="number" id="centerX" value="1013" min="0">
+                    </div>
+                    
+                    <div class="config-group">
+                        <label for="centerY">Text Center Y Position</label>
+                        <input type="number" id="centerY" value="746" min="0">
+                    </div>
+                    
+                    <button class="generate-btn" id="generateBtn" disabled style="margin-top: 20px;">
+                        🚀 Generate Certificates
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="activity-card">
+                <div class="activity-header">
+                    <h2 class="activity-title">📋 Recent Activity</h2>
+                    <button class="activity-filter">All Time</button>
+                </div>
+                <div class="activity-list">
+                    <div class="activity-item">
+                        <div class="activity-item-icon">🎓</div>
+                        <div class="activity-item-content">
+                            <div class="activity-item-title">Generated 150 certificates</div>
+                            <div class="activity-item-time">2 hours ago</div>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-item-icon">📄</div>
+                        <div class="activity-item-content">
+                            <div class="activity-item-title">Uploaded new template</div>
+                            <div class="activity-item-time">5 hours ago</div>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-item-icon">📊</div>
+                        <div class="activity-item-content">
+                            <div class="activity-item-title">Imported CSV with 200 participants</div>
+                            <div class="activity-item-time">1 day ago</div>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-item-icon">✅</div>
+                        <div class="activity-item-content">
+                            <div class="activity-item-title">Verification successful: 98%</div>
+                            <div class="activity-item-time">2 days ago</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Tracking -->
+            <div class="progress-card">
+                <div class="activity-header">
+                    <h2 class="activity-title">📈 Generation Progress</h2>
+                </div>
+                <div id="progressSection" style="margin-top: 20px;">
+                    <div class="progress-item">
+                        <div class="progress-item-header">
+                            <span class="progress-item-label">Overall Completion</span>
+                            <span class="progress-item-value" id="progressPercent">0%</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" id="progressFill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="status-log" id="statusLog" style="margin-top: 20px; padding: 16px; background: rgba(255, 255, 255, 0.02); border-radius: 12px; max-height: 200px; overflow-y: auto;">
+                        <p style="color: var(--text-secondary); font-size: 14px;">📋 Ready to generate certificates...</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 {% endblock %}
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/admin_dashboard.js') }}"></script>
+<script>
+    // Animate counters on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[data-counter]').forEach(el => {
+            const target = parseInt(el.getAttribute('data-counter'));
+            animateCounter(el, target, 2000);
+        });
+    });
+</script>
 {% endblock %}

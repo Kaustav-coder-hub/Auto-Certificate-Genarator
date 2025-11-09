@@ -4,13 +4,43 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>{% block title %}Certificate Portal{% endblock %}</title>
+	
+	<!-- Google Fonts -->
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+	
+	<!-- AOS Animation Library -->
+	<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+	
 	<!-- Global styles -->
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/modern-ui.css') }}">
 	<link rel="stylesheet" href="{{ url_for('static', filename='css/styles1.css') }}">
 	{% block extra_css %}{% endblock %}
 </head>
 <body>
+	<!-- Theme Toggle Button -->
+	<div class="theme-toggle tooltip" data-tooltip="Toggle theme">
+		<div class="theme-toggle-slider"></div>
+	</div>
+
 	{% block content %}{% endblock %}
 
+	<!-- AOS Animation Library -->
+	<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+	<script>
+		// Initialize AOS animations
+		AOS.init({
+			duration: 800,
+			easing: 'ease-out-cubic',
+			once: true,
+			offset: 100
+		});
+	</script>
+	
+	<!-- Modern UI Scripts -->
+	<script src="{{ url_for('static', filename='js/modern-ui.js') }}"></script>
+	
 	{% block extra_js %}{% endblock %}
 </body>
 </html>
