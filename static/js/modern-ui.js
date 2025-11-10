@@ -337,9 +337,6 @@ document.addEventListener('DOMContentLoaded', () => {
         new CustomCursor();
     }
     
-    // Initialize theme manager
-    new ThemeManager();
-    
     // Create animated background
     createAnimatedBackground();
     
@@ -380,7 +377,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================
 window.ModernUI = {
     CustomCursor,
-    ThemeManager,
     animateCounter,
     animateProgressBar,
     createRipple

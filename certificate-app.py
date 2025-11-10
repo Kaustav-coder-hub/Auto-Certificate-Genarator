@@ -12,6 +12,8 @@ import secrets
 import time
 import json
 import hashlib
+import smtplib
+from email.message import EmailMessage
 
 # Google Drive API imports
 from google.oauth2 import service_account
@@ -25,6 +27,51 @@ from firebase_admin import credentials as firebase_credentials, auth as firebase
 
 # Load environment variables
 load_dotenv()
+
+# Email configuration for notifications
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "resume.ai.analyzer@gmail.com")
+SMTP_PASS = os.getenv("SMTP_PASS")
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+
+def send_certificate_notification(to_email, participant_name, event_name, verification_url):
+    """Send a simple notification email when certificate is ready"""
+    if not SENDER_EMAIL or not SMTP_PASS:
+        logger.warning("Email credentials not configured - skipping notification")
+        return False
+    
+    try:
+        msg = EmailMessage()
+        msg["From"] = SENDER_EMAIL
+        msg["To"] = to_email
+        msg["Subject"] = f"Your Certificate is Ready - {event_name}"
+        
+        body = f"""Hello {participant_name},
+
+Great news! Your certificate for participating in {event_name} has been created and is ready for you.
+
+To verify and download your certificate, please visit our verification portal:
+{verification_url}
+
+Simply enter your email address and select "{event_name}" from the event dropdown.
+
+Best regards,
+The Certificate Team
+"""
+        
+        msg.set_content(body)
+        
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SENDER_EMAIL, SMTP_PASS)
+            server.send_message(msg)
+        
+        logger.info(f"Certificate notification sent to {to_email} for {event_name}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send notification email to {to_email}: {e}")
+        return False
 
 # Initialize Flask app (explicit templates folder)
 app = Flask(__name__, template_folder='templates')
@@ -648,6 +695,33 @@ def generate_bulk_certificates():
                 cert_path = os.path.join('certificates', cert_filename)
                 img.save(cert_path, format='PNG')
                 
+                # Add to database
+                conn = get_db_connection()
+                try:
+                    if DB_TYPE == 'mysql':
+                        with conn.cursor() as cur:
+                            cur.execute(
+                                "INSERT INTO certificates (name, email, event, drive_file_id, issued_at) VALUES (%s, %s, %s, %s, NOW())",
+                                (name, participant['email'], event_name, cert_filename)
+                            )
+                    else:
+                        cur = conn.cursor()
+                        cur.execute(
+                            "INSERT INTO certificates (name, email, event, drive_file_id, issued_at) VALUES (?, ?, ?, ?, datetime('now'))",
+                            (name, participant['email'], event_name, cert_filename)
+                        )
+                    conn.commit()
+                    
+                    # Send notification email
+                    verification_url = url_for('index', _external=True)
+                    send_certificate_notification(participant['email'], name, event_name, verification_url)
+                    
+                except Exception as db_error:
+                    logger.error(f"Database error for {name}: {db_error}")
+                    continue
+                finally:
+                    conn.close()
+                
                 generated_count += 1
                 logger.info(f"Generated certificate for {name}")
                 
@@ -663,6 +737,78 @@ def generate_bulk_certificates():
         
     except Exception as e:
         logger.error(f"Bulk generation error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+def add_certificate_to_db(name, email, event, drive_file_id=None, issued_at=None):
+    """Add a certificate entry to the database and send notification"""
+    conn = get_db_connection()
+    try:
+        if DB_TYPE == 'mysql':
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO certificates (name, email, event, drive_file_id, issued_at) VALUES (%s, %s, %s, %s, %s)",
+                    (name, email, event, drive_file_id, issued_at or 'NOW()')
+                )
+        else:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO certificates (name, email, event, drive_file_id, issued_at) VALUES (?, ?, ?, ?, ?)",
+                (name, email, event, drive_file_id, issued_at or "datetime('now')")
+            )
+        conn.commit()
+        
+        # Send notification email
+        verification_url = url_for('index', _external=True)
+        send_certificate_notification(email, name, event, verification_url)
+        
+        logger.info(f"Certificate added to database for {name} ({email}) - {event}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error adding certificate to database: {e}")
+        return False
+    finally:
+        conn.close()
+
+@app.route('/admin/add-certificate', methods=['POST'])
+@csrf.exempt
+def add_certificate():
+    """Manually add a certificate to the database and send notification"""
+    if not session.get('admin_authenticated'):
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
+    
+    try:
+        data = request.get_json() or request.form
+        name = data.get('name', '').strip()
+        email = data.get('email', '').strip().lower()
+        event = data.get('event', '').strip()
+        drive_file_id = data.get('drive_file_id', '').strip()
+        
+        if not name or not email or not event:
+            return jsonify({'status': 'error', 'message': 'Missing required fields'}), 400
+        
+        # Validate email format
+        if '@' not in email or '.' not in email.split('@')[1]:
+            return jsonify({'status': 'error', 'message': 'Invalid email format'}), 400
+        
+        # Check if certificate already exists
+        existing = get_certificate_by_email_event(email, event)
+        if existing:
+            return jsonify({'status': 'error', 'message': 'Certificate already exists for this email and event'}), 409
+        
+        # Add certificate and send notification
+        success = add_certificate_to_db(name, email, event, drive_file_id)
+        
+        if success:
+            return jsonify({
+                'status': 'success', 
+                'message': f'Certificate added for {name}. Notification email sent.'
+            }), 201
+        else:
+            return jsonify({'status': 'error', 'message': 'Failed to add certificate'}), 500
+            
+    except Exception as e:
+        logger.error(f"Add certificate error: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # -------- Additional UI routes to connect new templates --------
