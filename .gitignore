@@ -1,7 +1,70 @@
-*.env
-*.pyc
+# Python
 __pycache__/
-auto-certi-gen-env/
-*.json
-os
-certificates/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual Environments
+.venv/
+venv/
+auto-certi-env/
+env/
+ENV/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Firebase Service Account (SENSITIVE - Never commit!)
+serviceAccountKey.json
+static/serviceAccountKey.json
+**/serviceAccountKey.json
+
+# Database Files
+certificates.db
+*.db
+*.sqlite
+*.sqlite3
+
+# User Data (SENSITIVE)
+admin_users.json
+
+# Generated Certificates & Uploads
+uploads/certificates/*
+uploads/csv/*
+uploads/templates/*
+!uploads/*/.gitkeep
+certificates/*
+!certificates/.gitkeep
+generated/*
+!generated/.gitkeep
+
+# Test Scripts (optional - keep for development)
+test_firebase_connection.py
+test_signup.py
+test_firebase_auth.html
+test_*.py
+test_*.html
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# OS Files
+Thumbs.db
+.DS_Store

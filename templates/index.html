@@ -1,485 +1,198 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CertiPortal - Certificate Management System</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-</head>
-<body>
-    <!-- Loading Overlay -->
-    <div id="loading" class="loading-overlay">
-        <div class="loading-spinner"></div>
-        <p>Loading...</p>
+{% extends 'base.html' %}
+{% block title %}Certificate Verification Portal - Verify Your Certificates{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modern-index.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="hero-container">
+    <!-- Hero Section -->
+    <div class="hero-section" data-aos="fade-up">
+        <h1 class="hero-title">Certificate Verification Portal</h1>
+        <p class="hero-subtitle">
+            Instantly verify and download your participation certificates with our secure, AI-powered verification system
+        </p>
+        
+        <div class="hero-badges">
+            <span class="badge">
+                <span class="badge-icon">⚡</span>
+                <span>Instant Verification</span>
+            </span>
+            <span class="badge">
+                <span class="badge-icon">🔒</span>
+                <span>Secure & Encrypted</span>
+            </span>
+            <span class="badge">
+                <span class="badge-icon">🌐</span>
+                <span>Global Access</span>
+            </span>
+        </div>
     </div>
 
-    <!-- Main Application Container -->
-    <div id="app" class="app">
-        
-        <!-- Public Landing Page -->
-        <div id="landing-page" class="page active">
-            <div class="landing-container">
-                <header class="landing-header">
-                    <div class="container">
-                        <div class="logo">
-                            <h1>CertiPortal</h1>
-                            <span>Certificate Management System</span>
-                        </div>
-                        <nav class="landing-nav">
-                            <button id="admin-login-btn" class="btn btn--primary">Admin Login</button>
-                        </nav>
-                    </div>
-                </header>
+    <!-- Verification Card -->
+    <div class="verification-card" data-aos="fade-up" data-aos-delay="200">
+        <div class="verification-header">
+            <h2>Verify Your Certificate</h2>
+            <p>Enter your details to verify and download your certificate</p>
+        </div>
 
-                <main class="landing-main">
-                    <div class="container">
-                        <div class="hero-section">
-                            <h2>Verify Your Certificate</h2>
-                            <p>Enter your email address and select the event to download your certificate</p>
-                            
-                            <div class="verification-form-container">
-                                <form id="verification-form" class="verification-form">
-                                    <div class="form-group">
-                                        <label for="email" class="form-label">Email Address</label>
-                                        <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
-                                    </div>
-                                    
-                                    <div class="form-group">
-                                        <label for="event-select" class="form-label">Select Event</label>
-                                        <select id="event-select" class="form-control" required>
-                                            <option value="">Choose an event</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <button type="submit" class="btn btn--primary btn--full-width">Verify Certificate</button>
-                                </form>
-                                
-                                <div id="verification-result" class="verification-result hidden"></div>
-                            </div>
-                        </div>
-                    </div>
-                </main>
+        <form method="post" id="verifyForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+            <div class="verify-form-group">
+                <label for="email">📧 Email Address</label>
+                <input type="email" 
+                       id="email" 
+                       name="email" 
+                       class="verify-input"
+                       required 
+                       placeholder="Enter your registered email"
+                       value="{{ request.form.get('email', '') }}"
+                       autocomplete="email">
+            </div>
+
+            <div class="verify-form-group">
+                <label for="event">🎯 Select Event</label>
+                <select id="event" name="event" class="verify-select" required>
+                    <option value="">Choose your event</option>
+                    {% for event in events %}
+                        <option value="{{ event }}" 
+                                {% if request.form.get('event') == event %}selected{% endif %}>
+                            {{ event }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="verify-button" id="submitBtn">
+                <span>Verify Certificate</span>
+            </button>
+        </form>
+
+        <!-- Results Area -->
+        {% if error %}
+        <div class="result-card result-error" data-aos="fade-up">
+            <div class="result-header">
+                <span class="result-icon">❌</span>
+                <h3 class="result-title">Certificate Not Found</h3>
+            </div>
+            <div class="result-content">
+                {{ error }}
+            </div>
+            <div class="result-actions">
+                <button class="result-button result-button-secondary" onclick="location.reload()">
+                    Try Again
+                </button>
             </div>
         </div>
+        {% endif %}
 
-        <!-- Admin Dashboard -->
-        <div id="admin-dashboard" class="page admin-layout">
-            <aside class="sidebar">
-                <div class="sidebar-header">
-                    <h3>CertiPortal</h3>
-                </div>
-                
-                <nav class="sidebar-nav" id="sidebar-nav">
-                    <a href="#" data-page="dashboard" class="nav-item active">
-                        <span>📊</span> Dashboard
-                    </a>
-                    <a href="#" data-page="events" class="nav-item" data-permission="events">
-                        <span>🎯</span> Event Management
-                    </a>
-                    <a href="#" data-page="participants" class="nav-item" data-permission="participants">
-                        <span>👥</span> Participants
-                    </a>
-                    <a href="#" data-page="generation" class="nav-item" data-permission="generation">
-                        <span>🏆</span> Certificate Generation
-                    </a>
-                    <a href="#" data-page="analytics" class="nav-item" data-permission="analytics">
-                        <span>📈</span> Analytics
-                    </a>
-                    <a href="#" data-page="system" class="nav-item" data-permission="system">
-                        <span>⚙️</span> System Monitor
-                    </a>
-                    <a href="#" data-page="settings" class="nav-item" data-permission="settings">
-                        <span>🛠️</span> Settings
-                    </a>
-                </nav>
-                
-                <div class="sidebar-footer">
-                    <div class="user-info">
-                        <div class="user-avatar" id="user-avatar"></div>
-                        <div class="user-details">
-                            <span id="user-name">Admin User</span>
-                            <small id="user-email">admin@certiportal.com</small>
-                            <span id="user-role" class="user-role">Super Admin</span>
-                        </div>
-                    </div>
-                    <button id="logout-btn" class="btn btn--outline btn--sm">Logout</button>
-                </div>
-            </aside>
-
-            <main class="main-content">
-                <header class="main-header">
-                    <div class="breadcrumbs">
-                        <span id="current-page-title">Dashboard</span>
-                    </div>
-                    <div class="welcome-message" id="welcome-message">
-                        Welcome back, Admin! You have full system access.
-                    </div>
-                </header>
-
-                <!-- Dashboard Content -->
-                <div id="dashboard-content" class="content-area active">
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-header">
-                                <h3>Total Events</h3>
-                                <span class="stat-icon">🎯</span>
-                            </div>
-                            <div class="stat-value" id="total-events">0</div>
-                            <div class="stat-change positive">+12% this month</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-header">
-                                <!DOCTYPE html>
-                                <html lang="en">
-                                <head>
-                                    <meta charset="UTF-8">
-                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                    <title>CertiPortal - Certificate Management System</title>
-                                    <link rel="stylesheet" href="/static/style.css">
-                                    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-                                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-                                </head>
-                                <body>
-                                    <!-- Loading Overlay -->
-                                    <div id="loading" class="loading-overlay">
-                                        <div class="loading-spinner"></div>
-                                        <p>Loading...</p>
-                                    </div>
-                                    <div id="app" class="app">
-                                        <!-- SPA content will be loaded here by app.js -->
-                                    </div>
-                                    <script src="/static/app.js"></script>
-                                </body>
-                                </html>
-                    
-                    <div class="participants-filters">
-                        <select id="event-filter" class="form-control">
-                            <option value="">All Events</option>
-                        </select>
-                        <input type="search" id="participant-search" class="form-control" placeholder="Search participants...">
-                    </div>
-                    
-                    <div id="participants-list" class="participants-table"></div>
-                </div>
-
-                <!-- Certificate Generation Content -->
-                <div id="generation-content" class="content-area">
-                    <div class="content-header">
-                        <h2>Certificate Generation</h2>
-                    </div>
-                    
-                    <div class="generation-controls">
-                        <select id="generation-event-select" class="form-control">
-                            <option value="">Select Event</option>
-                        </select>
-                        <button id="generate-certificates-btn" class="btn btn--primary">Generate Certificates</button>
-                    </div>
-                    
-                    <div id="generation-progress" class="progress-section hidden">
-                        <h3>Generation Progress</h3>
-                        <div class="progress-bar">
-                            <div id="progress-fill" class="progress-fill"></div>
-                        </div>
-                        <div id="progress-text" class="progress-text">0%</div>
-                    </div>
-                </div>
-
-                <!-- Analytics Content -->
-                <div id="analytics-content" class="content-area">
-                    <div class="content-header">
-                        <h2>Analytics Dashboard</h2>
-                        <button id="export-report-btn" class="btn btn--secondary">Export Report</button>
-                    </div>
-                    
-                    <div class="analytics-overview">
-                        <div class="analytics-card">
-                            <h3>Email Statistics</h3>
-                            <div class="chart-container" style="position: relative; height: 300px;">
-                                <canvas id="email-stats-chart"></canvas>
-                            </div>
-                        </div>
-                        
-                        <div class="analytics-card">
-                            <h3>Download Metrics</h3>
-                            <div class="metric-list">
-                                <div class="metric-item">
-                                    <span>Total Downloads</span>
-                                    <span id="total-downloads">0</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span>Download Rate</span>
-                                    <span id="download-rate">0%</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span>Pending Downloads</span>
-                                    <span id="pending-downloads">0</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- System Monitor Content -->
-                <div id="system-content" class="content-area">
-                    <div class="content-header">
-                        <h2>System Monitor</h2>
-                        <button id="refresh-system-btn" class="btn btn--secondary">Refresh</button>
-                    </div>
-                    
-                    <div class="system-overview">
-                        <div class="system-card">
-                            <h3>System Health</h3>
-                            <div class="system-metrics">
-                                <div class="metric-item">
-                                    <span>System Uptime</span>
-                                    <span class="status status--success">99.9%</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span>Processing Queue</span>
-                                    <span id="queue-status">Empty</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span>Storage Usage</span>
-                                    <span>67% (2.1GB / 3.2GB)</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="system-card">
-                            <h3>Generation Performance</h3>
-                            <div class="metric-list">
-                                <div class="metric-item">
-                                    <span>Avg. Generation Time</span>
-                                    <span>2.3 seconds</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span>Success Rate</span>
-                                    <span>99.7%</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span>Active Workers</span>
-                                    <span>4 / 8</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Settings Content -->
-                <div id="settings-content" class="content-area">
-                    <div class="content-header">
-                        <h2>System Settings</h2>
-                    </div>
-                    
-                    <div class="settings-sections">
-                        <div class="settings-card">
-                            <h3>Email Configuration</h3>
-                            <form class="settings-form">
-                                <div class="form-group">
-                                    <label class="form-label">SMTP Server</label>
-                                    <input type="text" class="form-control" value="smtp.certiportal.com">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">From Email</label>
-                                    <input type="email" class="form-control" value="noreply@certiportal.com">
-                                </div>
-                                <button type="submit" class="btn btn--primary">Save Changes</button>
-                            </form>
-                        </div>
-                        
-                        <div class="settings-card">
-                            <h3>Security Settings</h3>
-                            <div class="settings-options">
-                                <div class="setting-option">
-                                    <span>Two-Factor Authentication</span>
-                                    <input type="checkbox" checked>
-                                </div>
-                                <div class="setting-option">
-                                    <span>Login Notifications</span>
-                                    <input type="checkbox">
-                                </div>
-                                <div class="setting-option">
-                                    <span>Auto-logout (minutes)</span>
-                                    <input type="number" value="30" class="form-control" style="width: 80px;">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
+        {% if cert_link %}
+        <div class="result-card result-success" data-aos="fade-up">
+            <div class="result-header">
+                <span class="result-icon">✅</span>
+                <h3 class="result-title">Certificate Found!</h3>
+            </div>
+            <div class="result-content">
+                Your certificate has been verified successfully. You can now download or preview it.
+            </div>
+            <div class="result-actions">
+                <a href="{{ cert_link }}" class="result-button result-button-primary" target="_blank" rel="noopener">
+                    📥 Download Certificate
+                </a>
+                {% if preview_link %}
+                <a href="{{ preview_link }}" class="result-button result-button-secondary" target="_blank" rel="noopener">
+                    👁️ Preview
+                </a>
+                {% endif %}
+            </div>
         </div>
+        {% endif %}
     </div>
 
-    <!-- Login Modal -->
-    <div id="login-modal" class="login-modal hidden">
-        <div class="login-modal-overlay"></div>
-        <div class="login-modal-content">
-            <div class="login-modal-header">
-                <h2>Welcome to CertiPortal</h2>
-                <button id="close-login-modal" class="login-modal-close">&times;</button>
+    <!-- Features Section -->
+    <div class="features-section" data-aos="fade-up" data-aos-delay="400">
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🎓</div>
+                <h3 class="feature-title">Multiple Events</h3>
+                <p class="feature-description">
+                    Verify certificates from various workshops, courses, and events all in one place
+                </p>
             </div>
             
-            <div class="login-modal-body">
-                <div class="login-tabs">
-                    <button class="login-tab active" data-tab="login">Login</button>
-                    <button class="login-tab" data-tab="signup">Sign Up</button>
-                    <button class="login-tab" data-tab="magic">Magic Link</button>
-                </div>
-                
-                <div class="login-tab-content">
-                    <!-- Login Tab -->
-                    <div id="login-tab-content" class="tab-content active">
-                        <form id="login-form" class="login-form">
-                            <div class="form-group">
-                                <label for="login-email" class="form-label">Email Address</label>
-                                <input type="email" id="login-email" class="form-control dark" placeholder="Enter your email" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="login-password" class="form-label">Password</label>
-                                <input type="password" id="login-password" class="form-control dark" placeholder="Enter your password" required>
-                            </div>
-                            <button type="submit" class="btn btn--primary btn--full-width login-btn">Login</button>
-                        </form>
-                        
-                        <div class="oauth-section">
-                            <div class="oauth-divider">
-                                <span>or continue with</span>
-                            </div>
-                            <div class="oauth-buttons">
-                                <button id="google-login-btn" class="btn btn--outline oauth-btn">
-                                    <span>🔍</span>
-                                    Google
-                                </button>
-                                <button id="github-login-btn" class="btn btn--outline oauth-btn">
-                                    <span>🐱</span>
-                                    GitHub
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Sign Up Tab -->
-                    <div id="signup-tab-content" class="tab-content">
-                        <form id="signup-form" class="login-form">
-                            <div class="form-group">
-                                <label for="signup-name" class="form-label">Full Name</label>
-                                <input type="text" id="signup-name" class="form-control dark" placeholder="Enter your full name" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="signup-email" class="form-label">Email Address</label>
-                                <input type="email" id="signup-email" class="form-control dark" placeholder="Enter your email" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="signup-password" class="form-label">Password</label>
-                                <input type="password" id="signup-password" class="form-control dark" placeholder="Create a password" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="signup-confirm" class="form-label">Confirm Password</label>
-                                <input type="password" id="signup-confirm" class="form-control dark" placeholder="Confirm your password" required>
-                            </div>
-                            <button type="submit" class="btn btn--primary btn--full-width login-btn">Sign Up</button>
-                        </form>
-                    </div>
-                    
-                    <!-- Magic Link Tab -->
-                    <div id="magic-tab-content" class="tab-content">
-                        <form id="magic-form" class="login-form">
-                            <div class="magic-info">
-                                <p>Enter your email address and we'll send you a secure magic link to sign in instantly.</p>
-                            </div>
-                            <div class="form-group">
-                                <label for="magic-email" class="form-label">Email Address</label>
-                                <input type="email" id="magic-email" class="form-control dark" placeholder="Enter your email" required>
-                            </div>
-                            <button type="submit" class="btn btn--primary btn--full-width login-btn">Send Magic Link</button>
-                        </form>
-                    </div>
-                </div>
-                
-                <div class="demo-credentials">
-                    <div class="demo-accounts">
-                        <h4>Demo Accounts:</h4>
-                        <div class="account-grid">
-                            <div class="demo-account">
-                                <strong>Super Admin:</strong><br>
-                                <span>demo@example.com / demo123</span>
-                            </div>
-                            <div class="demo-account">
-                                <strong>Event Manager:</strong><br>
-                                <span>eventmanager@certiportal.com / event123</span>
-                            </div>
-                            <div class="demo-account">
-                                <strong>Marketing Manager:</strong><br>
-                                <span>marketing@certiportal.com / market123</span>
-                            </div>
-                            <div class="demo-account">
-                                <strong>Operations Manager:</strong><br>
-                                <span>ops@certiportal.com / ops123</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3 class="feature-title">Instant Access</h3>
+                <p class="feature-description">
+                    Get your certificates immediately after verification with no waiting time
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <h3 class="feature-title">Secure System</h3>
+                <p class="feature-description">
+                    Military-grade encryption ensures your data and certificates are always protected
+                </p>
             </div>
         </div>
     </div>
 
-    <!-- Other Modals -->
-    <div id="create-event-modal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Create New Event</h3>
-                <button class="modal-close">&times;</button>
+    <!-- Stats Section -->
+    <div class="stats-section" data-aos="fade-up" data-aos-delay="600">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-number" data-counter="5000">0</div>
+                <div class="stat-label">Certificates Issued</div>
             </div>
-            <form id="create-event-form" class="modal-body">
-                <div class="form-group">
-                    <label for="event-name" class="form-label">Event Name</label>
-                    <input type="text" id="event-name" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="event-template" class="form-label">Certificate Template</label>
-                    <input type="file" id="event-template" class="form-control" accept="image/*">
-                    <small>Upload a certificate template image</small>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn--secondary modal-cancel">Cancel</button>
-                    <button type="submit" class="btn btn--primary">Create Event</button>
-                </div>
-            </form>
+            <div class="stat-item">
+                <div class="stat-number" data-counter="150">0</div>
+                <div class="stat-label">Events Hosted</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" data-counter="98">0</div>
+                <div class="stat-label">Success Rate %</div>
+            </div>
         </div>
     </div>
 
-    <div id="upload-csv-modal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Upload Participants CSV</h3>
-                <button class="modal-close">&times;</button>
-            </div>
-            <form id="upload-csv-form" class="modal-body">
-                <div class="form-group">
-                    <label for="csv-event-select" class="form-label">Select Event</label>
-                    <select id="csv-event-select" class="form-control" required>
-                        <option value="">Choose an event</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="csv-file" class="form-label">CSV File</label>
-                    <input type="file" id="csv-file" class="form-control" accept=".csv" required>
-                    <small>Expected format: Name, Email, Phone</small>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn--secondary modal-cancel">Cancel</button>
-                    <button type="submit" class="btn btn--primary">Upload</button>
-                </div>
-            </form>
-        </div>
+    <!-- Footer -->
+    <div class="home-footer">
+        <p>
+            Need to generate bulk certificates? 
+            <a href="{{ url_for('login') }}">Admin Login</a>
+        </p>
+        <p style="margin-top: 16px; opacity: 0.7;">
+            © 2025 Certificate Management Portal • Secure • Fast • Reliable
+        </p>
     </div>
+</div>
 
-    <!-- Success/Error Messages -->
-    <div id="toast-container" class="toast-container"></div>
+<script>
+// Form submission with loading state
+document.getElementById('verifyForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('submitBtn');
+    btn.classList.add('loading');
+    btn.disabled = true;
+});
 
-    <script src="app.js"></script>
-</body>
-</html>
+// Form focus effects
+document.querySelectorAll('.verify-input, .verify-select').forEach(input => {
+    input.addEventListener('focus', () => {
+        input.closest('.verify-form-group').classList.add('focused');
+    });
+    
+    input.addEventListener('blur', () => {
+        if (!input.value) {
+            input.closest('.verify-form-group').classList.remove('focused');
+        }
+    });
+});
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/index.js') }}"></script>
+{% endblock %}

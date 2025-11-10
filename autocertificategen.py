@@ -2,14 +2,13 @@ import os
 import smtplib
 from email.message import EmailMessage
 from PIL import Image, ImageDraw, ImageFont
-import gspread
-from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
 # X: 984, Y: 1101
 load_dotenv()
+import csv
 
 # ----- config -----
-TEMPLATE_PATH = "samplecertificate.png"  # exported from Canva without a name
+TEMPLATE_PATH = "uploads/templates/samplecertificate.png"  # exported from Canva without a name
 FONT_PATH = "fonts/Calligraphy Brilliant.ttf"   # pick a cursive/brush font to match “Sample”
 FONT_SIZE = 75                              # tune to match design
 TEXT_COLOR = (20, 30, 60)                    # dark ink color
@@ -21,10 +20,12 @@ OUTPUT_DIR = "certificates"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Email
-SENDER_EMAIL = os.environ["SENDER_EMAIL"]  # your email
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "resume.ai.analyzer@gmail.com")  # default sender email
 if not SENDER_EMAIL:
     raise ValueError("SENDER_EMAIL is not set in the environment variables.")
-SMTP_PASS = os.environ["SMTP_PASS"]          # app password
+SMTP_PASS = os.getenv("SMTP_PASS")          # Gmail app password
+if not SMTP_PASS:
+    raise ValueError("SMTP_PASS is not set in the environment variables.")
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SUBJECT = "Your Certificate: From Campus to Code"
@@ -37,15 +38,17 @@ Best,
 The JISCE Coding Club
 """
 
-# Google Sheets
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-creds = Credentials.from_service_account_file("trackbot-56f02-466007-4bc2606df4b9.json", scopes=SCOPES)
-gc = gspread.authorize(creds)
-
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1X3-st3h1W3vJA-8fxmzIMPg0Wy5Ny6TyW0u6yrJag_Y/edit?gid=0#gid=0"
-TAB_NAME = "Sheet1"
-ws = gc.open_by_url(SHEET_URL).worksheet(TAB_NAME)
-rows = ws.get_all_records(expected_headers=["Name", "Email"])
+ # Load certificate data from local CSV file
+CSV_PATH = os.getenv("CSV_PATH", "uploads/csv/certificates.csv")
+rows = []
+if os.path.exists(CSV_PATH):
+    with open(CSV_PATH, newline='', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            rows.append(row)
+else:
+    print(f"CSV file not found: {CSV_PATH}")
+    exit(1)
 
 # ----- helpers -----
 def render_certificate(name: str, outpath: str):
@@ -86,22 +89,37 @@ for r in rows:
     email = str(r.get("Email","")).strip()
     if not full or not email:
         continue
+    
     event_name = "CampusToCode"  # You can set this dynamically if needed
     out = os.path.join(OUTPUT_DIR, f"{event_name}_{full.replace(' ','_')}.png")
+    
+    # Render certificate
     render_certificate(full, out)
+    print(f"✓ Generated certificate for {full}")
+    
+    # Send email with certificate
+    first_name = full.split()[0]
     verification_url = "http://localhost:5000"  # Change to your deployed Flask app URL
-    # Update email body to include verification link
-    custom_body = BODY + f"\n\nTo verify or download your certificate, visit: {verification_url}"
+    custom_body = BODY.format(first_name=first_name) + f"\n\nTo verify or download your certificate, visit: {verification_url}"
+    
     msg = EmailMessage()
     msg["From"] = SENDER_EMAIL
     msg["To"] = email
     msg["Subject"] = SUBJECT
-    msg.set_content(custom_body.format(first_name=full.split()[0]))
+    msg.set_content(custom_body)
+    
     with open(out, "rb") as f:
         msg.add_attachment(f.read(), maintype="application",
                            subtype="octet-stream",
                            filename=os.path.basename(out))
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as s:
-        s.starttls()
-        s.login(SENDER_EMAIL, SMTP_PASS)
-        s.send_message(msg)
+    
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as s:
+            s.starttls()
+            s.login(SENDER_EMAIL, SMTP_PASS)
+            s.send_message(msg)
+        print(f"✓ Sent email to {email}")
+    except Exception as e:
+        print(f"✗ Failed to send email to {email}: {e}")
+
+print("\n✓ Certificate generation complete!")

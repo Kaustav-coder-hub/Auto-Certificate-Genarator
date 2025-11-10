@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Generation Progress{% endblock %}
+{% block content %}
+<div class="container" style="max-width:800px;margin:50px auto;">
+	<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+		<h1 style="margin: 0;">📈 Bulk Generation Progress</h1>
+		<a href="{{ url_for('admin_logout') }}" style="padding:10px 20px;background:#ef4444;color:white;text-decoration:none;border-radius:8px;font-weight:600;">🚪 Logout</a>
+	</div>
+	<p style="color:#555;">Live status updates while your certificates are being generated.</p>
+	<div class="progress" style="height:28px;background:#e5e7eb;border-radius:14px;overflow:hidden;margin:26px 0;">
+		<div id="genProgressFill" style="height:100%;width:0%;background:linear-gradient(90deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;">0%</div>
+	</div>
+	<div id="genLog" style="background:#111827;color:#f9fafb;padding:16px;border-radius:8px;font-family:monospace;font-size:.85rem;max-height:320px;overflow-y:auto;">
+		<div>[init] Waiting for generation to start...</div>
+	</div>
+	<div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;">
+		<a class="btn" href="{{ url_for('admin_dashboard') }}">← Back to Dashboard</a>
+		<a class="btn" href="{{ url_for('index') }}">Home</a>
+	</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+	// Simulated progress placeholder (future: replace with SSE or WebSocket)
+	let p = 0;
+	const fill = document.getElementById('genProgressFill');
+	const log = document.getElementById('genLog');
+	const interval = setInterval(()=>{
+		p += Math.random()*15;
+		if (p >= 100) p = 100;
+		fill.style.width = p + '%';
+		fill.textContent = Math.round(p) + '%';
+		log.innerHTML += `<div>[progress] ${Math.round(p)}%</div>`;
+		log.scrollTop = log.scrollHeight;
+		if (p === 100){
+			log.innerHTML += '<div style="color:#10b981">[done] Certificates generated successfully.</div>';
+			clearInterval(interval);
+		}
+	}, 700);
+</script>
+{% endblock %}

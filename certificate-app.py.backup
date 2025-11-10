@@ -1,27 +1,21 @@
 # Complete Flask Certificate Verification Application
+from flask import Flask, render_template, request, render_template_string, redirect, url_for, session, flash
 from flask import Flask, render_template, request, render_template_string, redirect, url_for, session, flash, jsonify, send_from_directory
 from flask_talisman import Talisman
-from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import os
 import logging
 from functools import wraps
 from dotenv import load_dotenv
+from googleapiclient.discovery import build
+from google.oauth2.service_account import Credentials
+import firebase_admin
+from firebase_admin import credentials, auth as firebase_auth
+from flask import request, session, jsonify
 import secrets
 import time
-import json
-import hashlib
-
-# Google Drive API imports
-from google.oauth2 import service_account
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-
-# Firebase imports
-import firebase_admin
-from firebase_admin import credentials as firebase_credentials, auth as firebase_auth
 
 # Load environment variables
 load_dotenv()
@@ -52,60 +46,21 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 # Security configurations
-# Content Security Policy - Updated for Firebase OAuth with Google/GitHub
+# Content Security Policy: allow images from self, data URIs and jsDelivr (used for SVG icons).
+# Also allow scripts/styles from Google Firebase and CDNJS where needed for the admin page.
 csp = {
     'default-src': ["'self'"],
     'img-src': ["'self'", 'data:', 'https:', 'http:'],
-    'script-src': [
-        "'self'", 
-        "'unsafe-inline'",
-        'https://www.gstatic.com', 
-        'https://www.googleapis.com',
-        'https://apis.google.com',
-        'https://firebase.googleapis.com',
-        'https://cdn.jsdelivr.net', 
-        'https://cdnjs.cloudflare.com'
-    ],
-    'style-src': [
-        "'self'", 
-        "'unsafe-inline'", 
-        'https://cdnjs.cloudflare.com', 
-        'https://cdn.jsdelivr.net',
-        'https://fonts.googleapis.com'
-    ],
-    'font-src': [
-        "'self'", 
-        'https://cdnjs.cloudflare.com',
-        'https://fonts.gstatic.com'
-    ],
-    'connect-src': [
-        "'self'", 
-        'https://www.googleapis.com',
-        'https://apis.google.com',
-        'https://firebase.googleapis.com',
-        'https://*.googleapis.com', 
-        'https://identitytoolkit.googleapis.com', 
-        'https://securetoken.googleapis.com',
-        'https://*.firebaseio.com',
-        'https://*.cloudfunctions.net'
-    ],
-    'frame-src': [
-        "'self'", 
-        'https://accounts.google.com', 
-        'https://*.firebaseapp.com',
-        'https://certificate-management-6710c.firebaseapp.com'
-    ],
-    'child-src': [
-        "'self'", 
-        'https://accounts.google.com'
-    ],
+    'script-src': ["'self'", 'https://www.gstatic.com', 'https://www.googleapis.com', 'https://cdn.jsdelivr.net', 'https://cdnjs.cloudflare.com', 'https://accounts.google.com', 'https://*.firebaseapp.com'],
+    'style-src': ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com', 'https://cdn.jsdelivr.net', 'https://accounts.google.com', 'https://fonts.googleapis.com'],
+    'font-src': ["'self'", 'https://cdnjs.cloudflare.com', 'https://fonts.gstatic.com'],
+    'connect-src': ["'self'", 'https://*.googleapis.com', 'https://identitytoolkit.googleapis.com', 'https://securetoken.googleapis.com', 'https://*.firebaseio.com', 'https://*.cloudfunctions.net', 'https://*.firebaseapp.com'],
+    'frame-src': ["'self'", 'https://accounts.google.com', 'https://*.firebaseapp.com', 'https://certificate-management-6710c.firebaseapp.com'],
+    'child-src': ["'self'", 'https://accounts.google.com', 'https://*.firebaseapp.com'],
     'object-src': ["'none'"]
 }
 Talisman(app, content_security_policy=csp, force_https=False)  # Set force_https=True in production
-
-# CSRF Protection
 csrf = CSRFProtect(app)
-# Note: Firebase OAuth route will be manually exempted with @csrf.exempt decorator
 
 # Rate limiting
 limiter = Limiter(
@@ -117,7 +72,6 @@ limiter = Limiter(
 # Logging configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 # Configuration
 DRIVE_FOLDER_ID = os.getenv("DRIVE_FOLDER_ID", "1y-IZ41vP_OdGIGxTg0skWO-YHox8Vyhd")
@@ -323,7 +277,7 @@ def handle_drive_api_errors(f):
     return decorated_function
 
 @app.route('/', methods=['GET', 'POST'], endpoint='index')
-@limiter.limit("50 per minute")  # Prevent abuse
+@limiter.limit("10 per minute")  # Prevent abuse
 @handle_drive_api_errors
 def verify():
     error = None
@@ -437,9 +391,8 @@ def verify():
             error = "Service configuration error. Please contact support."
             logger.error("Service account file not found")
         except Exception as e:
-            logger.error(f"Error during certificate lookup: {e}")
-            error = "Certificate verification service temporarily unavailable. Please try again later."
-            return render_template("index.html", events=EVENTS, error=error)
+            logger.error(f"Unexpected error during certificate verification: {str(e)}")
+            error = "An unexpected error occurred. Please try again later or contact support."
     
     return render_template(
         "index.html",
@@ -516,7 +469,7 @@ def health_check():
     """Health check endpoint for monitoring"""
     try:
         # Test Drive API connection
-        creds = Credentials.from_service_account_info(json.loads(os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')), scopes=SCOPES)
+        creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
         drive_service = build('drive', 'v3', credentials=creds)
         
         # Simple API test
@@ -548,7 +501,7 @@ def bulk_generate():
 def admin_signup_page():
     """Signup page - if already authenticated, go to dashboard"""
     if session.get('admin_authenticated'):
-        return redirect(url_for('mode_selection'))
+        return redirect(url_for('admin_dashboard'))
     return render_template('admin.html')
 
 @app.route('/admin/dashboard', endpoint='admin_dashboard')
@@ -729,7 +682,7 @@ def admin_login():
         session['admin_authenticated'] = True
         session['admin_email'] = email
         flash('Login successful!', 'success')
-        return redirect(url_for('mode_selection'))
+        return redirect(url_for('admin_dashboard'))
     else:
         flash('Invalid email or password.', 'error')
         return redirect(url_for('login'))
@@ -746,21 +699,40 @@ def admin_signup():
         flash('Email already registered. Please log in.', 'error')
         return redirect(url_for('login'))
     
-    # Save user to local storage
+    # Try to create user in Firebase Authentication (if initialized)
+    firebase_user_created = False
+    try:
+        if firebase_admin._apps:  # Check if Firebase is initialized
+            # Create user in Firebase Authentication
+            firebase_user = firebase_auth.create_user(
+                email=email,
+                password=password,
+                email_verified=False
+            )
+            firebase_user_created = True
+            logger.info(f"Firebase user created: {firebase_user.uid} for {email}")
+    except Exception as e:
+        logger.warning(f"Firebase user creation failed (continuing with local auth): {e}")
+    
+    # Always save to local storage as backup
     users[email] = {
-        'password': hash_password(password)
+        'password': hash_password(password),
+        'firebase_uid': firebase_user.uid if firebase_user_created else None
     }
     save_admin_users(users)
     
     session['admin_authenticated'] = True
     session['admin_email'] = email
     
-    flash('Signup successful! You are now logged in.', 'success')
+    if firebase_user_created:
+        flash('Signup successful! Account created in Firebase. You are now logged in.', 'success')
+    else:
+        flash('Signup successful! You are now logged in. (Local auth only)', 'success')
     
-    return redirect(url_for('mode_selection'))
+    return redirect(url_for('admin_dashboard'))
 
 # Admin logout route
-@app.route('/admin/logout', endpoint='admin_logout')
+@app.route('/admin/logout')
 def admin_logout():
     session.pop('admin_authenticated', None)
     session.pop('admin_email', None)
@@ -772,7 +744,7 @@ def admin_logout():
 def login():
     # If already logged in, go straight to dashboard
     if session.get('admin_authenticated'):
-        return redirect(url_for('mode_selection'))
+        return redirect(url_for('admin_dashboard'))
     return render_template('login.html')
 
 @app.route('/login', methods=['POST'], endpoint='login_post')
@@ -786,10 +758,53 @@ def login_post():
         session['admin_authenticated'] = True
         session['admin_email'] = email
         flash('Welcome back!', 'success')
-        return redirect(url_for('mode_selection'))
+        return redirect(url_for('admin_dashboard'))
+    
+    # If local auth fails and Firebase is available, try Firebase Authentication
+    try:
+        if firebase_admin._apps:  # Check if Firebase is initialized
+            # Get user by email from Firebase
+            firebase_user = firebase_auth.get_user_by_email(email)
+            logger.info(f"Firebase user found: {firebase_user.uid}")
+            
+            # Note: Firebase Admin SDK cannot verify passwords directly
+            # This is a limitation - password verification requires client SDK or REST API
+            flash('Please use the Google/GitHub login buttons for Firebase authentication.', 'info')
+            return redirect(url_for('login'))
+    except Exception as e:
+        logger.debug(f"Firebase auth attempt failed: {e}")
     
     flash('Invalid email or password.', 'error')
     return redirect(url_for('login'))
+
+# Firebase admin login route (initialize only if service account file exists)
+if os.path.exists(SERVICE_ACCOUNT_FILE):
+    try:
+        cred = credentials.Certificate(SERVICE_ACCOUNT_FILE)
+        firebase_admin.initialize_app(cred)
+        logger.info("Firebase admin initialized from %s", SERVICE_ACCOUNT_FILE)
+    except Exception as e:
+        logger.warning("Firebase admin initialization skipped: %s", e)
+else:
+    logger.info("Firebase service account file not found (%s) — skipping firebase_admin init.", SERVICE_ACCOUNT_FILE)
+
+@app.route('/admin/firebase-login', methods=['POST'])
+def admin_firebase_login():
+    data = request.get_json()
+    id_token = data.get('idToken')
+    try:
+        decoded_token = firebase_auth.verify_id_token(id_token)
+        session['admin_authenticated'] = True
+        session['admin_email'] = decoded_token.get('email')
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 401
+
+@app.route('/test_firebase_auth.html')
+@app.route('/test-firebase')
+def test_firebase_auth():
+    """Diagnostic page for Firebase authentication testing"""
+    return render_template('test_firebase_auth.html')
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -901,53 +916,6 @@ def test_preview(token):
         """
         return render_template_string(html)
 
-# Firebase initialization
-SERVICE_ACCOUNT_FILE = os.path.join('static', 'serviceAccountKey.json')
-if os.path.exists(SERVICE_ACCOUNT_FILE):
-    try:
-        cred = firebase_credentials.Certificate(SERVICE_ACCOUNT_FILE)
-        firebase_admin.initialize_app(cred)
-        logger.info("Firebase initialized successfully")
-    except Exception as e:
-        logger.warning(f"Firebase initialization failed: {e}")
-else:
-    logger.warning(f"Firebase service account file not found: {SERVICE_ACCOUNT_FILE}")
-
-@app.route('/admin/firebase-login', methods=['POST'])
-@csrf.exempt
-def firebase_login():
-    """Handle Firebase OAuth login"""
-    logger.info(f"Firebase login request received. Content-Type: {request.content_type}")
-    logger.info(f"Request data: {request.data}")
-    
-    data = request.get_json()
-    logger.info(f"Parsed JSON data: {data}")
-    
-    if not data:
-        return jsonify({'status': 'error', 'message': 'No JSON data received'}), 400
-    
-    id_token = data.get('idToken')
-    
-    if not id_token:
-        return jsonify({'status': 'error', 'message': 'No token provided'}), 400
-    
-    try:
-        # Verify the Firebase ID token
-        decoded_token = firebase_auth.verify_id_token(id_token)
-        email = decoded_token.get('email')
-        uid = decoded_token.get('uid')
-        
-        # Create session
-        session['admin_authenticated'] = True
-        session['admin_email'] = email
-        session['firebase_uid'] = uid
-        
-        logger.info(f"Firebase OAuth login successful: {email}")
-        return jsonify({'status': 'success', 'redirect': url_for('mode_selection')})
-    except Exception as e:
-        logger.error(f"Firebase token verification failed: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 401
-
 if __name__ == '__main__':
     # Seed database (create table and insert CERT_DB) — non-fatal on error
     try:
@@ -970,6 +938,7 @@ if __name__ == '__main__':
         logger.error("DRIVE_FOLDER_ID not configured")
         print("ERROR: DRIVE_FOLDER_ID not configured!")
         exit(1)
+
     # Run the application
     app.run(
         debug=os.getenv('FLASK_ENV') == 'development',
