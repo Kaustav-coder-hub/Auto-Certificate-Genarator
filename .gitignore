@@ -27,6 +27,10 @@ serviceAccountKey.json
 static/serviceAccountKey.json
 **/serviceAccountKey.json
 
+# OAuth Credentials (SENSITIVE - Never commit!)
+static/token.json
+static/client_secret.json
+
 # Database Files
 certificates.db
 *.db
