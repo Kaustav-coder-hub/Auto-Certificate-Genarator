@@ -2,23 +2,42 @@ import os
 import logging
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from google.oauth2.service_account import Credentials
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 
 # Google Drive API setup
-SCOPES = ['https://www.googleapis.com/auth/drive']
-SERVICE_ACCOUNT_FILE = 'static/serviceAccountKey.json'
+SCOPES = ['https://www.googleapis.com/auth/drive.file']
+CLIENT_SECRETS_FILE = 'static/client_secret.json'
+TOKEN_FILE = 'static/token.json'
 
 def get_drive_service():
     """
-    Initialize and return Google Drive service
+    Initialize and return Google Drive service using OAuth
     
     Returns:
         googleapiclient.discovery.Resource: Drive service object
     """
     try:
-        credentials = Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-        service = build('drive', 'v3', credentials=credentials)
+        creds = None
+        # The file token.json stores the user's access and refresh tokens
+        if os.path.exists(TOKEN_FILE):
+            creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+        
+        # If there are no (valid) credentials available, let the user log in
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    CLIENT_SECRETS_FILE, SCOPES)
+                creds = flow.run_local_server(port=0)
+            
+            # Save the credentials for the next run
+            with open(TOKEN_FILE, 'w') as token:
+                token.write(creds.to_json())
+        
+        service = build('drive', 'v3', credentials=creds)
         return service
     except Exception as e:
         logging.error(f"Error initializing Drive service: {e}")

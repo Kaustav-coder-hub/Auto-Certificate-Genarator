@@ -169,7 +169,7 @@ logger = logging.getLogger(__name__)
 DRIVE_FOLDER_ID = os.getenv("DRIVE_FOLDER_ID", "1y-IZ41vP_OdGIGxTg0skWO-YHox8Vyhd")
 SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE", "static/serviceAccountKey.json")
 EVENTS = os.getenv("EVENTS", "CampusToCode,PythonWorkshop,DataScience101").split(",")
-SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
+SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 # # In-memory certificate database (10 predefined entries)
 # CERT_DB = [
@@ -690,25 +690,29 @@ def generate_bulk_certificates():
                 
                 draw.text((x, y), name, fill=text_color_rgb, font=font)
                 
-                # Save certificate
+                # Save certificate locally first
                 cert_filename = f"{event_name}_{name.replace(' ', '_')}.png"
                 cert_path = os.path.join('certificates', cert_filename)
                 img.save(cert_path, format='PNG')
                 
-                # Add to database
+                # Upload to Google Drive
+                from utils.drive_uploader import upload_certificate_to_drive
+                drive_file_id = upload_certificate_to_drive(cert_path, cert_filename, DRIVE_FOLDER_ID)
+                
+                # Add to database with Drive file ID
                 conn = get_db_connection()
                 try:
                     if DB_TYPE == 'mysql':
                         with conn.cursor() as cur:
                             cur.execute(
                                 "INSERT INTO certificates (name, email, event, drive_file_id, issued_at) VALUES (%s, %s, %s, %s, NOW())",
-                                (name, participant['email'], event_name, cert_filename)
+                                (name, participant['email'], event_name, drive_file_id)
                             )
                     else:
                         cur = conn.cursor()
                         cur.execute(
                             "INSERT INTO certificates (name, email, event, drive_file_id, issued_at) VALUES (?, ?, ?, ?, datetime('now'))",
-                            (name, participant['email'], event_name, cert_filename)
+                            (name, participant['email'], event_name, drive_file_id)
                         )
                     conn.commit()
                     
@@ -722,8 +726,12 @@ def generate_bulk_certificates():
                 finally:
                     conn.close()
                 
+                # Clean up local file after successful upload
+                if os.path.exists(cert_path):
+                    os.remove(cert_path)
+                
                 generated_count += 1
-                logger.info(f"Generated certificate for {name}")
+                logger.info(f"Generated and uploaded certificate for {name}")
                 
             except Exception as e:
                 logger.error(f"Error generating certificate for {participant['name']}: {e}")
@@ -1102,11 +1110,12 @@ if __name__ == '__main__':
     except Exception as e:
         logger.warning(f"Database seeding skipped or failed: {e}")
 
-    # Ensure required files exist (keep existing behavior)
-    if not os.path.exists(SERVICE_ACCOUNT_FILE):
-        logger.error(f"Service account file not found: {SERVICE_ACCOUNT_FILE}")
-        print(f"ERROR: Service account file '{SERVICE_ACCOUNT_FILE}' not found!")
-        print("Please ensure the Google Service Account JSON file is in the same directory.")
+    # Ensure required files exist (OAuth credentials)
+    CLIENT_SECRETS_FILE = os.path.join('static', 'client_secret.json')
+    if not os.path.exists(CLIENT_SECRETS_FILE):
+        logger.error(f"OAuth client secrets file not found: {CLIENT_SECRETS_FILE}")
+        print(f"ERROR: OAuth client secrets file '{CLIENT_SECRETS_FILE}' not found!")
+        print("Please ensure the Google OAuth client_secret.json file is in the static directory.")
         exit(1)
 
     # Validate environment variables
