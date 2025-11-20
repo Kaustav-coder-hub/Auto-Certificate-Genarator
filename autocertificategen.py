@@ -8,7 +8,7 @@ load_dotenv()
 import csv
 
 # ----- config -----
-TEMPLATE_PATH = "uploads/templates/samplecertificate.png"  # exported from Canva without a name
+TEMPLATE_PATH = "uploads/templates/Sample1.png"  # Predefined base certificate template
 FONT_PATH = "fonts/Calligraphy Brilliant.ttf"   # pick a cursive/brush font to match “Sample”
 FONT_SIZE = 75                              # tune to match design
 TEXT_COLOR = (20, 30, 60)                    # dark ink color

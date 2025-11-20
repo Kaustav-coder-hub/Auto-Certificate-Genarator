@@ -15,6 +15,9 @@ import hashlib
 import smtplib
 from email.message import EmailMessage
 
+# PIL imports for certificate generation
+from PIL import Image, ImageDraw, ImageFont
+
 # Google Drive API imports
 from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
@@ -325,6 +328,26 @@ def get_certificate_by_email_event(email, event):
             return {k: row[k] for k in row.keys()}
     finally:
         conn.close()
+
+def get_unique_events():
+    """Get all unique event names from the database"""
+    conn = get_db_connection()
+    try:
+        if DB_TYPE == 'mysql' and MYSQL_HOST and MYSQL_USER and MYSQL_DB:
+            with conn.cursor() as cur:
+                cur.execute("SELECT DISTINCT event FROM certificates ORDER BY event")
+                rows = cur.fetchall()
+                return [row['event'] for row in rows]
+        else:
+            cur = conn.cursor()
+            cur.execute("SELECT DISTINCT event FROM certificates ORDER BY event")
+            rows = cur.fetchall()
+            return [row[0] for row in rows]
+    except Exception as e:
+        logger.error(f"Error getting unique events: {e}")
+        return []
+    finally:
+        conn.close()
     if result:
         drive_file_id = result['drive_file_id']
         participant_name = result['name']
@@ -376,6 +399,12 @@ def verify():
     cert_link = None
     preview_link = None
     
+    # Get dynamic events from database
+    events = get_unique_events()
+    if not events:
+        # Fallback to static events if database is empty
+        events = EVENTS
+    
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         event = request.form.get('event', '').strip()
@@ -383,17 +412,17 @@ def verify():
         # Input validation
         if not email or not event:
             error = "Please fill in all required fields"
-            return render_template("index.html", events=EVENTS, error=error)
+            return render_template("index.html", events=events, error=error)
         
         # Basic email validation
         if '@' not in email or '.' not in email.split('@')[1]:
             error = "Please enter a valid email address"
-            return render_template("index.html", events=EVENTS, error=error)
+            return render_template("index.html", events=events, error=error)
 
         # Event validation
-        if event not in EVENTS:
+        if event not in events:
             error = "Invalid event selected"
-            return render_template("admin.html", events=EVENTS, error=error)
+            return render_template("index.html", events=events, error=error)
         
         try:
             # First, check the configured database for a match (fast), fall back to in-memory CERT_DB
@@ -488,7 +517,7 @@ def verify():
     
     return render_template(
         "index.html",
-        events=EVENTS,
+        events=events,
         error=error,
         cert_link=cert_link,
         preview_link=preview_link
@@ -576,7 +605,7 @@ def health_check():
 def stats():
     """Basic statistics endpoint (for admin use)"""
     return {
-        "available_events": EVENTS,
+        "available_events": get_unique_events(),
         "drive_folder_id": DRIVE_FOLDER_ID,
         "service_status": "running"
     }
@@ -603,70 +632,133 @@ def admin_dashboard_page():
         return redirect(url_for('login'))
     return render_template('admin_dashboard.html')
 
-@app.route('/admin/generate-bulk', methods=['POST'])
+@app.route('/admin/upload-csv', methods=['POST'])
 @csrf.exempt
-@limiter.limit("5 per hour")
-def generate_bulk_certificates():
-    """Handle bulk certificate generation from uploaded template and CSV"""
+def upload_csv():
+    """Handle CSV file upload and populate database with participants"""
     if not session.get('admin_authenticated'):
         return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
     
     try:
-        # Get uploaded files
-        template_file = request.files.get('template')
-        csv_file = request.files.get('csv')
+        if 'csv' not in request.files:
+            return jsonify({'status': 'error', 'message': 'No CSV file provided'}), 400
         
-        if not template_file or not csv_file:
-            return jsonify({'status': 'error', 'message': 'Missing template or CSV file'}), 400
+        csv_file = request.files['csv']
+        if csv_file.filename == '':
+            return jsonify({'status': 'error', 'message': 'No CSV file selected'}), 400
         
+        if not csv_file.filename.endswith('.csv'):
+            return jsonify({'status': 'error', 'message': 'File must be a CSV'}), 400
+        
+        # Save uploaded file temporarily
+        temp_path = os.path.join('uploads', 'csv', f"temp_{session['admin_authenticated']}.csv")
+        os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+        csv_file.save(temp_path)
+        
+        # Parse CSV
+        from utils.csv_parser import parse_csv_file
+        participants = parse_csv_file(temp_path)
+        
+        # Get event name from form
+        event_name = request.form.get('eventName', 'Certificate')
+        
+        # Clear existing certificates for this event (optional, or keep them)
+        # For now, we'll add new ones
+        
+        # Insert participants into database
+        conn = get_db_connection()
+        inserted_count = 0
+        try:
+            for participant in participants:
+                name = participant['name']
+                email = participant['email']
+                event = event_name  # Use the event name from form
+                
+                if DB_TYPE == 'mysql':
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "INSERT INTO certificates (name, email, event) VALUES (%s, %s, %s)",
+                            (name, email, event)
+                        )
+                else:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "INSERT INTO certificates (name, email, event) VALUES (?, ?, ?)",
+                        (name, email, event)
+                    )
+                inserted_count += 1
+            
+            conn.commit()
+            
+        finally:
+            conn.close()
+        
+        # Clean up temp file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Successfully uploaded {inserted_count} participants for event: {event_name}',
+            'count': inserted_count
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"CSV upload error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/admin/generate-bulk', methods=['POST'])
+@csrf.exempt
+@limiter.limit("5 per hour")
+def generate_bulk_certificates():
+    """Handle bulk certificate generation using predefined Sample1.png template for all participants in database"""
+    if not session.get('admin_authenticated'):
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
+    
+    try:
         # Get configuration
         font_family = request.form.get('fontFamily', 'Calligraphy Brilliant')
         font_size = int(request.form.get('fontSize', 75))
         text_color = request.form.get('textColor', '#141e3c')
-        event_name = request.form.get('eventName', 'CampusToCode')
         center_x = int(request.form.get('centerX', 1013))
         center_y = int(request.form.get('centerY', 746))
         
-        # Save uploaded files
-        import os
-        from werkzeug.utils import secure_filename
-        import csv as csv_module
-        from PIL import Image, ImageDraw, ImageFont
-        import smtplib
-        from email.message import EmailMessage
+        # Use predefined template
+        template_path = os.path.join('uploads', 'templates', 'Sample1.png')
+        if not os.path.exists(template_path):
+            return jsonify({'status': 'error', 'message': 'Predefined template Sample1.png not found'}), 500
         
-        # Create temp directories
-        os.makedirs('uploads/templates', exist_ok=True)
-        os.makedirs('uploads/csv', exist_ok=True)
-        os.makedirs('certificates', exist_ok=True)
+        # Query all participants from database
+        conn = get_db_connection()
+        try:
+            if DB_TYPE == 'mysql':
+                with conn.cursor() as cur:
+                    cur.execute("SELECT id, name, email, event FROM certificates")
+                    participants = cur.fetchall()
+            else:
+                cur = conn.cursor()
+                cur.execute("SELECT id, name, email, event FROM certificates")
+                participants = cur.fetchall()
+        finally:
+            conn.close()
         
-        # Save template
-        template_filename = secure_filename(template_file.filename)
-        template_path = os.path.join('uploads/templates', template_filename)
-        template_file.save(template_path)
-        
-        # Save and parse CSV
-        csv_filename = secure_filename(csv_file.filename)
-        csv_path = os.path.join('uploads/csv', csv_filename)
-        csv_file.save(csv_path)
-        
-        # Parse CSV and generate certificates
-        participants = []
-        with open(csv_path, 'r', encoding='utf-8') as f:
-            reader = csv_module.DictReader(f)
-            for row in reader:
-                participants.append({
-                    'name': row.get('Name', '').strip(),
-                    'email': row.get('Email', '').strip()
-                })
+        if not participants:
+            return jsonify({'status': 'error', 'message': 'No participants found in database'}), 400
         
         # Convert hex color to RGB
         text_color_rgb = tuple(int(text_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
         
+        # Ensure certificates directory exists
+        os.makedirs('certificates', exist_ok=True)
+        
         # Generate certificates
         generated_count = 0
         for participant in participants:
-            if not participant['name'] or not participant['email']:
+            name = participant['name']
+            email = participant['email']
+            event_name = participant['event']
+            
+            if not name or not email or not event_name:
                 continue
                 
             try:
@@ -681,7 +773,6 @@ def generate_bulk_certificates():
                 font = ImageFont.truetype(font_path, font_size)
                 
                 # Draw name
-                name = participant['name']
                 bbox = draw.textbbox((0, 0), name, font=font)
                 text_w = bbox[2] - bbox[0]
                 text_h = bbox[3] - bbox[1]
@@ -699,26 +790,26 @@ def generate_bulk_certificates():
                 from utils.drive_uploader import upload_certificate_to_drive
                 drive_file_id = upload_certificate_to_drive(cert_path, cert_filename, DRIVE_FOLDER_ID)
                 
-                # Add to database with Drive file ID
+                # Update database with Drive file ID and issued_at
                 conn = get_db_connection()
                 try:
                     if DB_TYPE == 'mysql':
                         with conn.cursor() as cur:
                             cur.execute(
-                                "INSERT INTO certificates (name, email, event, drive_file_id, issued_at) VALUES (%s, %s, %s, %s, NOW())",
-                                (name, participant['email'], event_name, drive_file_id)
+                                "UPDATE certificates SET drive_file_id = %s, issued_at = NOW() WHERE id = %s",
+                                (drive_file_id, participant['id'])
                             )
                     else:
                         cur = conn.cursor()
                         cur.execute(
-                            "INSERT INTO certificates (name, email, event, drive_file_id, issued_at) VALUES (?, ?, ?, ?, datetime('now'))",
-                            (name, participant['email'], event_name, drive_file_id)
+                            "UPDATE certificates SET drive_file_id = ?, issued_at = datetime('now') WHERE id = ?",
+                            (drive_file_id, participant['id'])
                         )
                     conn.commit()
                     
                     # Send notification email
                     verification_url = url_for('index', _external=True)
-                    send_certificate_notification(participant['email'], name, event_name, verification_url)
+                    send_certificate_notification(email, name, event_name, verification_url)
                     
                 except Exception as db_error:
                     logger.error(f"Database error for {name}: {db_error}")
@@ -729,17 +820,16 @@ def generate_bulk_certificates():
                 # Clean up local file after successful upload
                 if os.path.exists(cert_path):
                     os.remove(cert_path)
-                
                 generated_count += 1
                 logger.info(f"Generated and uploaded certificate for {name}")
                 
             except Exception as e:
-                logger.error(f"Error generating certificate for {participant['name']}: {e}")
+                logger.error(f"Error generating certificate for {name}: {e}")
                 continue
         
         return jsonify({
             'status': 'success',
-            'message': f'Successfully generated {generated_count} certificates',
+            'message': f'Successfully generated {generated_count} certificates for {len(participants)} participants',
             'total': generated_count
         }), 200
         
@@ -842,33 +932,6 @@ def generate_progress():
     if not session.get('admin_authenticated'):
         return redirect(url_for('login'))
     return render_template('generate_progress.html')
-
-@app.route('/admin/upload-template', methods=['GET'])
-def upload_template_page():
-    if not session.get('admin_authenticated'):
-        return redirect(url_for('login'))
-    return render_template('upload_custom_template.html')
-
-@app.route('/admin/upload-template', methods=['POST'])
-@csrf.exempt
-def upload_template_post():
-    if not session.get('admin_authenticated'):
-        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
-    try:
-        file = request.files.get('template')
-        name = request.form.get('name', '').strip()
-        if not file or not name:
-            return jsonify({'status': 'error', 'message': 'Missing template or name'}), 400
-        from werkzeug.utils import secure_filename
-        os.makedirs('uploads/templates', exist_ok=True)
-        filename = secure_filename(file.filename)
-        save_path = os.path.join('uploads/templates', filename)
-        file.save(save_path)
-        logger.info(f"Custom template uploaded: {filename} as {name}")
-        return jsonify({'status': 'success', 'message': 'Template uploaded', 'filename': filename}), 200
-    except Exception as e:
-        logger.error(f"Upload template error: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # Admin login route
 @app.route('/admin/login', methods=['POST'])
@@ -1110,13 +1173,16 @@ if __name__ == '__main__':
     except Exception as e:
         logger.warning(f"Database seeding skipped or failed: {e}")
 
-    # Ensure required files exist (OAuth credentials)
+    # Check for OAuth credentials (optional - app can run without them)
     CLIENT_SECRETS_FILE = os.path.join('static', 'client_secret.json')
     if not os.path.exists(CLIENT_SECRETS_FILE):
-        logger.error(f"OAuth client secrets file not found: {CLIENT_SECRETS_FILE}")
-        print(f"ERROR: OAuth client secrets file '{CLIENT_SECRETS_FILE}' not found!")
-        print("Please ensure the Google OAuth client_secret.json file is in the static directory.")
-        exit(1)
+        logger.warning(f"OAuth client secrets file not found: {CLIENT_SECRETS_FILE}")
+        print(f"WARNING: OAuth client secrets file '{CLIENT_SECRETS_FILE}' not found!")
+        print("Google OAuth and Drive upload features will be disabled.")
+        print("The app will continue running with email/password authentication only.")
+        CLIENT_SECRETS_FILE = None
+    else:
+        logger.info("OAuth client secrets file found - Google OAuth and Drive features enabled")
 
     # Validate environment variables
     if not DRIVE_FOLDER_ID:

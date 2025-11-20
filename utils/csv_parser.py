@@ -25,31 +25,38 @@ def parse_csv_file(csv_path: str) -> List[Dict[str, str]]:
         with open(csv_path, 'r', encoding='utf-8') as file:
             csv_reader = csv.DictReader(file)
             
-            # Validate required columns
+            # Validate required columns (case-insensitive)
             required_columns = ['name', 'email']
-            if not all(col in csv_reader.fieldnames for col in required_columns):
+            fieldnames_lower = [col.lower() for col in csv_reader.fieldnames]
+            if not all(col in fieldnames_lower for col in required_columns):
                 raise ValueError(f"CSV must contain columns: {required_columns}")
             
-            for row_num, row in enumerate(csv_reader, start=2):  # Start from 2 (header is row 1)
+            # Create mapping from lowercase to actual column names
+            col_mapping = {col.lower(): col for col in csv_reader.fieldnames}
+            
+            for row_num, row in enumerate(csv_reader, start=2):  # Start from row 2 (header is row 1)
                 # Validate required fields
-                if not row.get('name', '').strip():
+                name_col = col_mapping.get('name')
+                email_col = col_mapping.get('email')
+                
+                if not row.get(name_col, '').strip():
                     raise ValueError(f"Row {row_num}: Name is required")
                 
-                if not row.get('email', '').strip():
+                if not row.get(email_col, '').strip():
                     raise ValueError(f"Row {row_num}: Email is required")
                 
                 # Clean and validate email format
-                email = row['email'].strip().lower()
+                email = row[email_col].strip().lower()
                 if '@' not in email or '.' not in email:
                     raise ValueError(f"Row {row_num}: Invalid email format")
                 
                 participant = {
-                    'name': row['name'].strip(),
+                    'name': row[name_col].strip(),
                     'email': email,
-                    'event': row.get('event', 'Certificate').strip(),
-                    'date': row.get('date', '').strip(),
-                    'venue': row.get('venue', '').strip(),
-                    'organizer': row.get('organizer', '').strip()
+                    'event': row.get(col_mapping.get('event', ''), 'Certificate').strip() if 'event' in col_mapping else 'Certificate',
+                    'date': row.get(col_mapping.get('date', ''), '').strip() if 'date' in col_mapping else '',
+                    'venue': row.get(col_mapping.get('venue', ''), '').strip() if 'venue' in col_mapping else '',
+                    'organizer': row.get(col_mapping.get('organizer', ''), '').strip() if 'organizer' in col_mapping else ''
                 }
                 
                 participants.append(participant)

@@ -55,7 +55,7 @@ function signInWithProvider(providerName, button) {
   
   // Show loading state
   const originalHTML = button.innerHTML;
-  button.innerHTML = '??? Signing in...';
+  button.innerHTML = ' Signing in...';
   button.disabled = true;
   
   console.log(`Starting ${providerName} sign-in...`);

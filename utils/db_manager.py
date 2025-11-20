@@ -217,46 +217,28 @@ def delete_certificate(email: str, event: str) -> bool:
         logging.error(f"Error deleting certificate: {e}")
         return False
 
-def get_certificate_stats() -> Dict:
+def get_unique_events() -> List[str]:
     """
-    Get certificate statistics
+    Get all unique event names from database
     
     Returns:
-        Dict: Statistics about certificates
+        List[str]: List of unique event names
     """
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Total certificates
-        cursor.execute('SELECT COUNT(*) as total FROM certificates')
-        total = cursor.fetchone()['total']
-        
-        # Certificates by event
         cursor.execute('''
-            SELECT event, COUNT(*) as count 
+            SELECT DISTINCT event 
             FROM certificates 
-            GROUP BY event 
-            ORDER BY count DESC
+            ORDER BY event
         ''')
-        by_event = [dict(row) for row in cursor.fetchall()]
         
-        # Recent certificates (last 7 days)
-        cursor.execute('''
-            SELECT COUNT(*) as recent 
-            FROM certificates 
-            WHERE created_at >= datetime('now', '-7 days')
-        ''')
-        recent = cursor.fetchone()['recent']
-        
+        results = cursor.fetchall()
         conn.close()
         
-        return {
-            'total': total,
-            'by_event': by_event,
-            'recent': recent
-        }
+        return [row['event'] for row in results]
         
     except Exception as e:
-        logging.error(f"Error getting certificate stats: {e}")
-        return {'total': 0, 'by_event': [], 'recent': 0}
+        logging.error(f"Error getting unique events: {e}")
+        return []

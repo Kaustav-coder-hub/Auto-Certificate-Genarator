@@ -2,7 +2,6 @@
 {% block title %}Admin Dashboard - Certificate Generator{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-dashboard.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/certificate-generator.css') }}">
 {% endblock %}
 {% block content %}
     <div class="dashboard-container">
@@ -97,17 +96,10 @@
             </div>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="bento-grid" data-aos="fade-up" data-aos-delay="100">
-            <div class="action-card" onclick="document.getElementById('templateInput').click()">
-                <div class="action-icon">📄</div>
-                <div class="action-title">Upload Template</div>
-                <div class="action-description">
-                    Upload a new certificate template (PNG, JPEG)
-                </div>
-                <button class="action-button">Choose File</button>
-            </div>
 
+        <!--
+        <!-- Quick Actions
+        <div class="bento-grid" data-aos="fade-up" data-aos-delay="100">
             <div class="action-card" onclick="document.getElementById('csvInput').click()">
                 <div class="action-icon">📊</div>
                 <div class="action-title">Upload Data</div>
@@ -121,34 +113,15 @@
                 <div class="action-icon">🚀</div>
                 <div class="action-title">Generate</div>
                 <div class="action-description">
-                    Generate certificates in bulk
+                    Generate certificates in bulk using predefined template
                 </div>
                 <button class="action-button">Start</button>
             </div>
         </div>
+        -->
 
         <!-- Main Content - Bento Grid -->
         <div class="bento-grid" data-aos="fade-up" data-aos-delay="200">
-            <!-- Template Upload Card -->
-            <div class="stat-card stat-card-large">
-                <div class="stat-header">
-                    <h2 class="activity-title">📄 Certificate Template</h2>
-                </div>
-                <div class="upload-box" id="templateBox" style="margin-top: 20px;">
-                    <div class="upload-icon">🖼️</div>
-                    <p><strong>Drag & Drop</strong> your certificate template here</p>
-                    <p style="color: #7f8c8d; margin: 10px 0;">or</p>
-                    <label for="templateInput" class="upload-label">Browse Files</label>
-                    <input type="file" id="templateInput" class="file-input" accept="image/png,image/jpeg">
-                    <p style="color: #95a5a6; font-size: 0.9rem; margin-top: 15px;">
-                        Supported formats: PNG, JPEG (Recommended: 1920x1080px or higher)
-                    </p>
-                </div>
-                <div class="file-preview" id="templatePreview">
-                    <!-- Template preview will be inserted here -->
-                </div>
-            </div>
-
             <!-- CSV Upload Card -->
             <div class="stat-card stat-card-large">
                 <div class="stat-header">
@@ -161,7 +134,7 @@
                     <label for="csvInput" class="upload-label">Browse Files</label>
                     <input type="file" id="csvInput" class="file-input" accept=".csv">
                     <p style="color: #95a5a6; font-size: 0.9rem; margin-top: 15px;">
-                        CSV must contain columns: <strong>Name, Email</strong>
+                        CSV must contain columns: <strong>Name, Email</strong> (case-insensitive)
                     </p>
                 </div>
                 <div class="file-preview" id="csvPreview">

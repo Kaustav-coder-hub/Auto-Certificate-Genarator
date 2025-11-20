@@ -10,6 +10,7 @@ flask-limiter>=3.5.0
 # Google APIs (Drive, Sheets, Firebase)
 google-api-python-client>=2.100.0
 google-auth>=2.23.0
+google-auth-oauthlib>=1.2.0
 google-auth-httplib2>=0.2.0
 firebase-admin>=6.0.0
 gspread>=5.11.0

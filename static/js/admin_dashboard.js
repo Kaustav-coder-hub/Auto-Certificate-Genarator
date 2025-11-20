@@ -1,64 +1,30 @@
 // Admin Dashboard interactive logic extracted from inline script
-let templateFile = null;
 let csvFile = null;
 
-// Template upload handling
-const templateBox = document.getElementById('templateBox');
-const templateInput = document.getElementById('templateInput');
-const templatePreview = document.getElementById('templatePreview');
-
-if (templateBox) {
-  templateBox.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    templateBox.classList.add('dragover');
-  });
-
-  templateBox.addEventListener('dragleave', () => {
-    templateBox.classList.remove('dragover');
-  });
-
-  templateBox.addEventListener('drop', (e) => {
-    e.preventDefault();
-    templateBox.classList.remove('dragover');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      handleTemplateFile(file);
+// Counter animation function
+function animateCounter(element, target, duration = 2000) {
+    let start = 0;
+    const startTime = performance.now();
+    
+    function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function for smooth animation
+        const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+        const current = Math.floor(start + (target - start) * easeOutCubic);
+        
+        element.textContent = current.toLocaleString();
+        
+        if (progress < 1) {
+            requestAnimationFrame(update);
+        } else {
+            element.textContent = target.toLocaleString();
+        }
     }
-  });
+    
+    requestAnimationFrame(update);
 }
-
-if (templateInput) {
-  templateInput.addEventListener('change', (e) => {
-    if (e.target.files[0]) {
-      handleTemplateFile(e.target.files[0]);
-    }
-  });
-}
-
-function handleTemplateFile(file) {
-  templateFile = file;
-  templatePreview.innerHTML = `
-    <div class="preview-item">
-      <div class="preview-info">
-        <span>🖼️</span>
-        <div>
-          <strong>${file.name}</strong>
-          <p style="color: #7f8c8d; font-size: 0.9rem; margin: 0;">${(file.size / 1024 / 1024).toFixed(2)} MB</p>
-        </div>
-      </div>
-      <button class="remove-btn" onclick="removeTemplate()">Remove</button>
-    </div>
-  `;
-  templatePreview.classList.add('active');
-  checkReadyToGenerate();
-}
-
-window.removeTemplate = function () {
-  templateFile = null;
-  templatePreview.classList.remove('active');
-  templateInput.value = '';
-  checkReadyToGenerate();
-};
 
 // CSV upload handling
 const csvBox = document.getElementById('csvBox');
@@ -120,7 +86,7 @@ window.removeCSV = function () {
 
 function checkReadyToGenerate() {
   const generateBtn = document.getElementById('generateBtn');
-  if (generateBtn) generateBtn.disabled = !(templateFile && csvFile);
+  if (generateBtn) generateBtn.disabled = !csvFile; // Only require CSV file now
 }
 
 // Generate certificates
@@ -140,36 +106,54 @@ if (generateBtnEl) {
     // Reset progress
     progressFill.style.width = '0%';
     progressFill.textContent = '0%';
-    statusLog.innerHTML = '<p>📋 Preparing to generate certificates...</p>';
+    const progressPercent = document.getElementById('progressPercent');
+    if (progressPercent) progressPercent.textContent = '0%';
+    statusLog.innerHTML = '<p>📋 Preparing to upload CSV data...</p>';
 
-    // Collect form data
-    const formData = new FormData();
-    formData.append('template', templateFile);
-    formData.append('csv', csvFile);
-    formData.append('fontFamily', document.getElementById('fontFamily').value);
-    formData.append('fontSize', document.getElementById('fontSize').value);
-    formData.append('textColor', document.getElementById('textColor').value);
-    formData.append('eventName', document.getElementById('eventName').value);
-    formData.append('centerX', document.getElementById('centerX').value);
-    formData.append('centerY', document.getElementById('centerY').value);
+    // First, upload CSV
+    const uploadFormData = new FormData();
+    uploadFormData.append('csv', csvFile);
+    uploadFormData.append('eventName', document.getElementById('eventName').value);
 
     try {
-      const response = await fetch('/admin/generate-bulk', { method: 'POST', body: formData });
+      const uploadResponse = await fetch('/admin/upload-csv', { method: 'POST', body: uploadFormData });
+      if (!uploadResponse.ok) {
+        const error = await uploadResponse.json();
+        statusLog.innerHTML += `<p class="error">✗ CSV Upload Error: ${error.message || 'Failed to upload CSV'}</p>`;
+        generateBtn.disabled = false;
+        return;
+      }
+      
+      const uploadResult = await uploadResponse.json();
+      statusLog.innerHTML += `<p class="success">✓ ${uploadResult.message}</p>`;
+
+      // Now generate certificates
+      statusLog.innerHTML += '<p>📋 Starting certificate generation...</p>';
+
+      // Collect form data for generation
+      const genFormData = new FormData();
+      genFormData.append('fontFamily', document.getElementById('fontFamily').value);
+      genFormData.append('fontSize', document.getElementById('fontSize').value);
+      genFormData.append('textColor', document.getElementById('textColor').value);
+      genFormData.append('centerX', document.getElementById('centerX').value);
+      genFormData.append('centerY', document.getElementById('centerY').value);
+
+      const response = await fetch('/admin/generate-bulk', { method: 'POST', body: genFormData });
       if (response.ok) {
         const result = await response.json();
 
-        // Simulate progress
-        let progress = 0;
         const interval = setInterval(() => {
           progress += 10;
           if (progress <= 100) {
             progressFill.style.width = progress + '%';
-            progressFill.textContent = progress + '%';
+            if (progressPercent) progressPercent.textContent = progress + '%';
 
-            if (progress === 30) {
-              statusLog.innerHTML += '<p class="success">✓ Template uploaded successfully</p>';
-            } else if (progress === 50) {
-              statusLog.innerHTML += '<p class="success">✓ CSV data parsed</p>';
+            if (progress === 20) {
+              statusLog.innerHTML += '<p class="success">✓ CSV uploaded successfully</p>';
+            } else if (progress === 40) {
+              statusLog.innerHTML += '<p class="success">✓ Using predefined Sample1.png template</p>';
+            } else if (progress === 60) {
+              statusLog.innerHTML += '<p class="success">✓ Processing participants...</p>';
             } else if (progress === 80) {
               statusLog.innerHTML += '<p class="success">✓ Generating certificates...</p>';
             } else if (progress === 100) {

@@ -1,30 +1,31 @@
 import os
 import logging
+from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
-# Google Drive API setup
+# Google Drive API setup with OAuth 2.0
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
-CLIENT_SECRETS_FILE = 'static/client_secret.json'
-TOKEN_FILE = 'static/token.json'
+CLIENT_SECRETS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'client_secret.json')
+TOKEN_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'token.json')
 
 def get_drive_service():
     """
-    Initialize and return Google Drive service using OAuth
+    Initialize and return Google Drive service using OAuth 2.0
     
     Returns:
         googleapiclient.discovery.Resource: Drive service object
     """
     try:
         creds = None
-        # The file token.json stores the user's access and refresh tokens
+        
+        # Check if token.json exists with valid credentials
         if os.path.exists(TOKEN_FILE):
             creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
         
-        # If there are no (valid) credentials available, let the user log in
+        # If credentials are invalid or don't exist, run OAuth flow
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
@@ -33,7 +34,7 @@ def get_drive_service():
                     CLIENT_SECRETS_FILE, SCOPES)
                 creds = flow.run_local_server(port=0)
             
-            # Save the credentials for the next run
+            # Save credentials for future use
             with open(TOKEN_FILE, 'w') as token:
                 token.write(creds.to_json())
         
